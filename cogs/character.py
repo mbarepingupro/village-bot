@@ -81,63 +81,9 @@ class CharacterCog(commands.Cog):
 
     # ── !character ────────────────────────────────────────────────────────────
     @commands.command(name="profile", aliases=["stats", "mychar"])
-    async def character(self, ctx, member: discord.Member = None):
-        try:
-            """Show your character sheet. Usage: !profile or !profile @user"""
-            target = member or ctx.author
-            data   = load_data()
-            player = get_player(data, target)
-    
-            guild_info = "None — use `!join` to pick one"
-            if player["guild"] and player["guild"] in GUILDS:
-                g = GUILDS[player["guild"]]
-                guild_info = f"{g['emoji']} {g['display_name']} ({player['class']})"
-    
-            xp_needed = player["level"] * XP_PER_LEVEL
-            xp_bar_filled = int((player["xp"] / xp_needed) * 10)
-            xp_bar = "█" * xp_bar_filled + "░" * (10 - xp_bar_filled)
-    
-            # Equipped cosmetics
-            equipped = player.get("cosmetics", {})
-            cosmetic_lines = []
-            for slot, item_id in equipped.items():
-                item = ITEMS.get(item_id, {})
-                cosmetic_lines.append(f"  {item.get('emoji','?')} {item.get('name', item_id)} [{slot}]")
-            cosmetics_str = "\n".join(cosmetic_lines) if cosmetic_lines else "  None equipped"
-    
-            embed = discord.Embed(
-                title=f"📋 {target.display_name}",
-                color=discord.Color.blurple()
-            )
-            embed.add_field(name="Guild / Class", value=guild_info, inline=False)
-            embed.add_field(
-                name=f"Level {player['level']}",
-                value=f"`{xp_bar}` {player['xp']}/{xp_needed} XP",
-                inline=False
-            )
-            embed.add_field(
-                name="Stats",
-                value=f"💰 Gold: {player['gold']}  |  🪓 Gathers: {player['stats']['total_gathers']}  |  🎁 Loots: {player['stats']['total_loots']}",
-                inline=False
-            )
-            # Equipped tool
-            tool_id = player.get("equipped_tool")
-            if tool_id:
-                from config import ITEMS as ALL_ITEMS
-                t = ALL_ITEMS.get(tool_id, {"name": tool_id, "emoji": "🔧"})
-                tool_str = f"{t['emoji']} {t['name']}"
-            else:
-                tool_str = "None — buy one with `!shop`"
-            embed.add_field(name="Equipped Tool", value=tool_str, inline=False)
-            embed.add_field(name="Equipped", value=cosmetics_str, inline=False)
-            embed.set_footer(text="Use !inventory to see your items")
-    
-            await ctx.send(embed=embed)
-            save_data(data)  # persist auto-created player record
-            
-        except:
-             await ctx.send(f"Error: {e}")
-
+    async def character(self, ctx):
+        await ctx.send("profile command reached")
+        
     # ── !inventory ────────────────────────────────────────────────────────────
     @commands.command(name="inventory", aliases=["inv", "bag"])
     async def inventory(self, ctx):
