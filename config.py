@@ -11,7 +11,7 @@ import os
 # ── Bot settings ─────────────────────────────────────────────────────────────
 BOT_TOKEN      = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
 COMMAND_PREFIX = "!"
-DATA_FILE      = "village_data.json"
+DATA_FILE      = "/app/data/village_data.json"
 
 # IDs of Discord roles/users allowed to run mod commands (!startloot etc.)
 MOD_ROLE_NAMES = ["Moderator", "Mod", "streamer"]   # add your mod role names here
