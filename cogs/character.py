@@ -77,7 +77,7 @@ class CharacterCog(commands.Cog):
     #test command
     @commands.command(name="test123")
     async def test123(self, ctx):
-    await ctx.send("character cog is working!")
+        await ctx.send("character cog is working!")
 
     # ── !character ────────────────────────────────────────────────────────────
     @commands.command(name="profile", aliases=["stats", "mychar"])
