@@ -81,8 +81,36 @@ class CharacterCog(commands.Cog):
 
     # ── !character ────────────────────────────────────────────────────────────
     @commands.command(name="profile", aliases=["stats", "mychar"])
-    async def character(self, ctx):
-        await ctx.send("profile command reached")
+    async def character(self, ctx, member: discord.Member = None):
+        try:
+            target = member or ctx.author
+            data   = load_data()
+            player = get_player(data, target)
+    
+            guild_info = "None — use `!join` to pick one"
+            if player["guild"] and player["guild"] in GUILDS:
+                g = GUILDS[player["guild"]]
+                guild_info = f"{g['emoji']} {g['display_name']} ({player['class']})"
+    
+            xp_needed = player["level"] * XP_PER_LEVEL
+            xp_bar_filled = int((player["xp"] / xp_needed) * 10)
+            xp_bar = "█" * xp_bar_filled + "░" * (10 - xp_bar_filled)
+    
+            tool_id = player.get("equipped_tool")
+            tool_str = ITEMS[tool_id]["name"] if tool_id else "None"
+    
+            await ctx.send(
+                f"📋 **{target.display_name}**\n"
+                f"Guild: {guild_info}\n"
+                f"Level {player['level']} — `{xp_bar}` {player['xp']}/{xp_needed} XP\n"
+                f"💰 Gold: {player['gold']}\n"
+                f"🔨 Gathers: {player['stats']['total_gathers']} | 🎁 Loots: {player['stats']['total_loots']}\n"
+                f"⚒️ Tool: {tool_str}"
+            )
+            save_data(data)
+    
+        except Exception as e:
+            await ctx.send(f"❌ Error: {e}")
         
     # ── !inventory ────────────────────────────────────────────────────────────
     @commands.command(name="inventory", aliases=["inv", "bag"])
