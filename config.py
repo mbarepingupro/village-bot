@@ -17,7 +17,7 @@ DATA_FILE      = "village_data.json"
 MOD_ROLE_NAMES = ["Moderator", "Mod", "streamer"]   # add your mod role names here
 
 #Channel name where the bot works exclusiveky
-BOT_CHANNEL_NAME = "🛖🧊-penguin-village# exact name of your Discord channel
+BOT_CHANNEL_NAME = "🛖🧊-penguin-village"    # exact name of your Discord channel
 
 # ── Cooldowns (in seconds) ────────────────────────────────────────────────────
 COOLDOWNS = {
