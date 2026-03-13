@@ -77,7 +77,7 @@ class CharacterCog(commands.Cog):
     # ── !character ────────────────────────────────────────────────────────────
     @commands.command(name="profile", aliases=["stats", "mychar"])
     async def character(self, ctx, member: discord.Member = None):
-        """Show your character sheet. Usage: !character or !character @user"""
+        """Show your character sheet. Usage: !profile or !profile @user"""
         target = member or ctx.author
         data   = load_data()
         player = get_player(data, target)
