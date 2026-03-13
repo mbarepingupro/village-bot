@@ -80,7 +80,7 @@ class CharacterCog(commands.Cog):
         await ctx.send("character cog is working!")
 
     # ── !character ────────────────────────────────────────────────────────────
-    @commands.command(name="profile", aliases=["stats", "mychar"])
+    @commands.command(name="character", aliases=["char", "me"])
     async def character(self, ctx, member: discord.Member = None):
         try:
             target = member or ctx.author
