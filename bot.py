@@ -8,7 +8,7 @@ You rarely need to edit this file.
 import asyncio
 import discord
 from discord.ext import commands
-from config import BOT_TOKEN, COMMAND_PREFIX
+from config import BOT_TOKEN, COMMAND_PREFIX, BOT_CHANNEL_NAME
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -26,6 +26,12 @@ COGS = [
 @bot.event
 async def on_ready():
     print(f"✅  {bot.user} is online!")
+
+@bot.check
+async def only_in_bot_channel(ctx):
+    if BOT_CHANNEL_NAME and ctx.channel.name != BOT_CHANNEL_NAME:
+        return False
+    return True
 
 async def main():
     async with bot:
