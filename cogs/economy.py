@@ -185,7 +185,7 @@ class EconomyCog(commands.Cog):
             player.get("equipped_tool") == matched_id or
             matched_id in player.get("cosmetics", {}).values()
         )
-        if already_has:
+        if already_has and not is_super(ctx):
             await ctx.send(f"✅ You already own **{item_def['emoji']} {item_def['name']}**.")
             return
 
