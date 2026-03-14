@@ -16,7 +16,7 @@ from config import GUILDS, ITEMS, BASE_GATHER, COOLDOWNS, XP_PER_GATHER, XP_PER_
 from cogs.data import (
     load_data, save_data, get_player,
     add_item, cooldown_remaining, set_cooldown, add_xp, fmt_time,
-    data_lock, user_lock
+    data_lock, user_lock, is_super
 )
 
 # ── Craft recipes ─────────────────────────────────────────────────────────────
@@ -167,9 +167,11 @@ class GatherCog(commands.Cog):
                     await ctx.send(f"❌ Only a **{recipe['class_only']}** can craft that.")
                     return
 
-                remaining = cooldown_remaining(player, "craft", COOLDOWNS["craft"])
-                if remaining > 0 and not is_super(ctx):
-                    await ctx.send(f"⏳ Craft cooldown: **{fmt_time(remaining)}** remaining.")
+                remaining = cooldown_remaining(player, "gather", COOLDOWNS["gather"])
+                super_user = is_super(ctx)
+                await ctx.send(f"debug: remaining={remaining}, super={super_user}")
+                if remaining > 0 and not super_user:
+                    await ctx.send(f"⏳ {ctx.author.mention} Rest for **{fmt_time(remaining)}** before gathering again.")
                     return
 
                 for need_item, qty in recipe["needs"].items():
