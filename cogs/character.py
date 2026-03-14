@@ -54,7 +54,7 @@ class CharacterCog(commands.Cog):
         if player["guild"] is not None:
             last_join = player["cooldowns"].get("guild_switch", 0)
             remaining = GUILD_SWITCH_COOLDOWN - (time.time() - last_join)
-            if remaining > 0:
+            if remaining > 0 and not is_super(ctx):
                 days = int(remaining // 86400)
                 hrs  = int((remaining % 86400) // 3600)
                 await ctx.send(
