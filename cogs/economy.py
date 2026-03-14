@@ -127,9 +127,12 @@ class EconomyCog(commands.Cog):
             tag = "✅ owned" if owned else f"{price}💰"
 
             if guild_key and player.get("guild") != guild_key and not is_super(ctx):
-                guild_name = GUILDS.get(guild_key, {}).get("display_name", guild_key)
-                lock = "" if player_guild == guild_key else f" 🔒 *{guild_name} only*"
-                exclusives.append(f"{item['emoji']} **{item['name']}** — {tag}{lock}\n   *{item['description']}*")
+                try:
+                    guild_name = GUILDS.get(guild_key, {}).get("display_name", guild_key)
+                    lock = "" if player_guild == guild_key else f" 🔒 *{guild_name} only*"
+                    exclusives.append(f"{item['emoji']} **{item['name']}** — {tag}{lock}\n   *{item['description']}*")
+                except Exception as e:
+                    await ctx.send(f"❌ Error: {e}")
             elif item["type"] == "tool":
                 tools.append(f"{item['emoji']} **{item['name']}** — {tag}\n   *{item['description']}*")
             else:
@@ -186,8 +189,11 @@ class EconomyCog(commands.Cog):
             matched_id in player.get("cosmetics", {}).values()
         )
         if already_has and not is_super(ctx):
-            await ctx.send(f"✅ You already own **{item_def['emoji']} {item_def['name']}**.")
-            return
+            try:
+                await ctx.send(f"✅ You already own **{item_def['emoji']} {item_def['name']}**.")
+                return
+            except Exception as e:
+                await ctx.send(f"❌ Error: {e}")
 
         # Funds check
         price = listing["price"]
