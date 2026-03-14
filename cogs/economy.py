@@ -19,6 +19,18 @@ class EconomyCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    # ── !addgold ─────────────────────────────────────────────────────────────────
+    @commands.command(name="addgold")
+    async def addgold(self, ctx, amount: int = 9999):
+        """[MOD] Add gold to yourself for testing."""
+        if not is_super(ctx):
+            return
+        data   = load_data()
+        player = get_player(data, ctx.author)
+        add_gold(player, amount)
+        save_data(data)
+        await ctx.send(f"💰 Added **{amount} gold** to {ctx.author.display_name}. Balance: **{player['gold']} gold**")
+    
     # ── !gold ─────────────────────────────────────────────────────────────────
     @commands.command(name="gold", aliases=["wallet", "coins"])
     async def gold(self, ctx):
