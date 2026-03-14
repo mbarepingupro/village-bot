@@ -168,7 +168,7 @@ class GatherCog(commands.Cog):
                     return
 
                 remaining = cooldown_remaining(player, "craft", COOLDOWNS["craft"])
-                if remaining > 0:
+                if remaining > 0 and not is_super(ctx):
                     await ctx.send(f"⏳ Craft cooldown: **{fmt_time(remaining)}** remaining.")
                     return
 
