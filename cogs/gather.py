@@ -64,6 +64,10 @@ class GatherCog(commands.Cog):
                             bonuses[res] = bonuses.get(res, 1.0) + bonus
     
                     multiplier = 1.0
+                    # Check for active effects (e.g. from mystery potion or trick coin)
+                    active_effects = player.get("active_effects", {})
+                    if "gather_multiplier" in active_effects:
+                        multiplier = active_effects.pop("gather_multiplier")
                     if player["class"] == "Performer":
                         multiplier = random.choice([0, 0, 0.5, 1, 1, 1.5, 2, 3])
                     elif player["class"] == "Inmate":
