@@ -9,6 +9,7 @@ CONCURRENCY PROTECTION:
 - save_data()    : atomic write (temp file + rename) — no corrupt saves
 """
 
+import discord
 import json, os, time, asyncio
 from discord.ext import commands
 from config import DATA_FILE
