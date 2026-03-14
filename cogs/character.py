@@ -55,12 +55,15 @@ class CharacterCog(commands.Cog):
             last_join = player["cooldowns"].get("guild_switch", 0)
             remaining = GUILD_SWITCH_COOLDOWN - (time.time() - last_join)
             if remaining > 0 and not is_super(ctx):
-                days = int(remaining // 86400)
-                hrs  = int((remaining % 86400) // 3600)
-                await ctx.send(
-                    f"⏳ You can switch guilds again in **{days}d {hrs}h**."
-                )
-                return
+                try:
+                    days = int(remaining // 86400)
+                    hrs  = int((remaining % 86400) // 3600)
+                    await ctx.send(
+                        f"⏳ You can switch guilds again in **{days}d {hrs}h**."
+                    )
+                    return
+                except Exception as e:
+                    await ctx.send(f"❌ Error: {e}")
 
         g = GUILDS[matched_key]
         player["guild"]  = matched_key
