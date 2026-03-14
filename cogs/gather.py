@@ -52,7 +52,7 @@ class GatherCog(commands.Cog):
                     return
 
                 remaining = cooldown_remaining(player, "gather", COOLDOWNS["gather"])
-                if remaining > 0:
+                if remaining > 0 and not is_super(ctx):
                     await ctx.send(
                         f"⏳ {ctx.author.mention} Rest for **{fmt_time(remaining)}** before gathering again."
                     )
