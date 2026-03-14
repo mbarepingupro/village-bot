@@ -16,6 +16,9 @@ DATA_FILE      = "/app/data/village_data.json"
 # IDs of Discord roles/users allowed to run mod commands (!startloot etc.)
 MOD_ROLE_NAMES = ["Moderator", "Mod", "streamer"]   # add your mod role names here
 
+# Users with these roles bypass all cooldowns and restrictions
+SUPER_ROLES = ["streamer"]   # replace with your actual role name in Discord
+
 #Channel name where the bot works exclusiveky
 BOT_CHANNEL_NAME = "🛖🧊-penguin-village"    # exact name of your Discord channel
 
