@@ -8,7 +8,7 @@ import time
 import discord
 from discord.ext import commands
 from config import GUILDS, ITEMS, XP_PER_LEVEL
-from cogs.data import load_data, save_data, get_player, fmt_time
+from cogs.data import load_data, save_data, get_player, fmt_time, is_super
 
 GUILD_SWITCH_COOLDOWN = 60 * 60 * 24 * 7   # 7 days in seconds
 
