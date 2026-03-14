@@ -136,6 +136,14 @@ def sanitize_qty(qty, max_qty: int) -> int | None:
         return None
     return min(qty, max_qty)
 
+def is_super(ctx) -> bool:
+    from config import SUPER_ROLES
+    if isinstance(ctx.author, discord.Member):
+        return any(r.name in SUPER_ROLES for r in ctx.author.roles)
+    return False
+
+
+
 # ── Cog ───────────────────────────────────────────────────────────────────────
 
 class DataCog(commands.Cog):
