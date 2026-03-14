@@ -10,7 +10,7 @@ from config import GUILDS, ITEMS, SELL_PRICES, SHOP
 from cogs.data import (
     load_data, save_data, get_player,
     add_item, remove_item, add_gold, spend_gold,
-    sanitize_qty, data_lock, user_lock
+    sanitize_qty, data_lock, user_lock, is_super
 )
 
 
