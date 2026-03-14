@@ -37,13 +37,90 @@ class GatherCog(commands.Cog):
     @commands.command(name="gather")
     async def gather(self, ctx):
         try:
-            await ctx.send("gather reached")
-            super_user = is_super(ctx)
-            await ctx.send(f"super check passed: {super_user}")
-            data = load_data()
-            await ctx.send("data loaded")
-            player = get_player(data, ctx.author)
-            await ctx.send("player loaded")
+            if user_lock(ctx.author.id, "gather").locked():
+                return
+    
+            async with user_lock(ctx.author.id, "gather"):
+                async with data_lock:
+                    data   = load_data()
+                    player = get_player(data, ctx.author)
+    
+                    if player["guild"] is None:
+                        await ctx.send(f"⚠️ {ctx.author.mention} Join a guild first with `!join`.")
+                        return
+    
+                    remaining = cooldown_remaining(player, "gather", COOLDOWNS["gather"])
+                    if remaining > 0 and not is_super(ctx):
+                        await ctx.send(f"⏳ {ctx.author.mention} Rest for **{fmt_time(remaining)}** before gathering again.")
+                        return
+    
+                    guild_cfg = GUILDS[player["guild"]]
+                    bonuses   = dict(guild_cfg.get("gather_bonus", {}))
+    
+                    tool_id = player.get("equipped_tool")
+                    if tool_id:
+                        tool_def = ITEMS.get(tool_id, {})
+                        for res, bonus in tool_def.get("bonus", {}).items():
+                            bonuses[res] = bonuses.get(res, 1.0) + bonus
+    
+                    multiplier = 1.0
+                    if player["class"] == "Performer":
+                        multiplier = random.choice([0, 0, 0.5, 1, 1, 1.5, 2, 3])
+                    elif player["class"] == "Inmate":
+                        if random.random() < 0.2:
+                            multiplier = 2.0
+    
+                    gained = {}
+                    for item_id, (mn, mx) in BASE_GATHER.items():
+                        base_qty = random.randint(mn, mx)
+                        bonus    = bonuses.get(item_id, 1.0)
+                        qty      = max(0, int(base_qty * bonus * multiplier))
+                        if qty > 0:
+                            gained[item_id] = qty
+                            add_item(player, item_id, qty)
+    
+                    splash_msg = ""
+                    if player["class"] == "Sea Lion" and gained.get("fish", 0) > 0:
+                        all_others = [
+                            (uid, p) for uid, p in data["players"].items()
+                            if p.get("guild") and uid != str(ctx.author.id)
+                        ]
+                        random.shuffle(all_others)
+                        for uid, sp in all_others[:2]:
+                            add_item(sp, "fish", 1)
+                            splash_msg += f"\n🦭 Splash! <@{uid}> got +1 fish!"
+    
+                    set_cooldown(player, "gather")
+                    player["stats"]["total_gathers"] += 1
+                    levelled = add_xp(player, XP_PER_GATHER, XP_PER_LEVEL)
+                    save_data(data)
+    
+                if not gained:
+                    result_str = "Nothing! Better luck next time."
+                else:
+                    result_str = "  ".join(
+                        f"{ITEMS[k]['emoji']} {v} {ITEMS[k]['name']}"
+                        for k, v in gained.items()
+                    )
+    
+                msg = (
+                    f"{guild_cfg['emoji']} **{ctx.author.display_name}** ({player['class']}) gathered: "
+                    f"**{result_str}**"
+                )
+                if multiplier == 2.0 and player["class"] == "Inmate":
+                    msg += "\n🎲 **CHAOS ROLL! Double resources!**"
+                if player["class"] == "Performer":
+                    if multiplier == 0:
+                        msg += "\n🎪 *The crowd was not impressed...*"
+                    elif multiplier >= 2:
+                        msg += f"\n🎪 **STANDING OVATION! {int(multiplier)}x haul!**"
+                if splash_msg:
+                    msg += splash_msg
+                if levelled:
+                    msg += f"\n⬆️ **LEVEL UP! {ctx.author.display_name} is now level {player['level']}!**"
+    
+                await ctx.send(msg)
+    
         except Exception as e:
             await ctx.send(f"❌ Error: {e}")
             
