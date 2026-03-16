@@ -533,6 +533,18 @@ SHOP = {
     "soldier_helmet":   {"price": 50,  "guild_only": "the_barracks"},
     "cultist_robe":     {"price": 50,  "guild_only": "cursed_temple"},
     "executioner_hood": {"price": 50,  "guild_only": "the_guillotine"},
+    # ── Tools (all resources) ─────────────────────────────────────────────────
+    "egg_basket":       {"price": 30, "guild_only": None},
+    "bone_saw":         {"price": 30, "guild_only": None},
+    "herb_pouch":       {"price": 30, "guild_only": None},
+    "flask":            {"price": 30, "guild_only": None},
+    "candy_bag":        {"price": 30, "guild_only": None},
+    "confetti_cannon":  {"price": 30, "guild_only": None},
+    "hunting_knife":    {"price": 30, "guild_only": None},
+    "fur_trap":         {"price": 30, "guild_only": None},
+    "candle_mold":      {"price": 30, "guild_only": None},
+    "soul_jar":         {"price": 30, "guild_only": None},
+    "blood_vial":       {"price": 30, "guild_only": None},
     # ── ADD NEW SHOP ITEMS BELOW ──────────────────────────────────────────────
 }
 
