@@ -10,7 +10,7 @@ from config import GUILDS, ITEMS, SELL_PRICES, SHOP
 from cogs.data import (
     load_data, save_data, get_player,
     add_item, remove_item, add_gold, spend_gold,
-    sanitize_qty, data_lock, user_lock, is_super
+    sanitize_qty, data_lock, user_lock, is_super, fmt_gold
 )
 
 
@@ -27,7 +27,7 @@ class EconomyCog(commands.Cog):
         player = get_player(data, ctx.author)
         save_data(data)
         await ctx.send(
-            f"💰 **{ctx.author.display_name}** has **{player['gold']} gold**.\n"
+            f"💰 **{ctx.author.display_name}** has **{fmt_gold(player['gold'])}g**.\n"
             f"Earn more by selling resources (`!sell`) or claiming loot drops (`!loot`)."
         )
 
@@ -101,7 +101,7 @@ class EconomyCog(commands.Cog):
         await ctx.send(
             f"💱 **{ctx.author.display_name}** sold **{qty}x {item_def['emoji']} {item_def['name']}** "
             f"for **{earned}💰 gold**.\n"
-            f"Balance: **{player['gold']} gold**"
+            f"Balance: **{fmt_gold(player['gold'])}g**"
         )
 
     # ── !shop ─────────────────────────────────────────────────────────────────
@@ -135,7 +135,7 @@ class EconomyCog(commands.Cog):
             else:
                 cosmetics.append(f"{item['emoji']} **{item['name']}** — {tag}\n   *{item['description']}*")
 
-        lines = [f"🏪 **The Shop** — your balance: **{player['gold']}💰**\n"]
+        lines = [f"🏪 **The Shop** — your balance: **{fmt_gold(player['gold'])}g**\n"]
 
         if tools:
             lines.append("**⚒️ Gather Tools**")
@@ -220,7 +220,7 @@ class EconomyCog(commands.Cog):
         await ctx.send(
             f"🛍️ **{ctx.author.display_name}** bought **{item_def['emoji']} {item_def['name']}** "
             f"for **{price}💰**!\n"
-            f"Remaining balance: **{player['gold']}💰**\n"
+            f"Remaining balance: **{fmt_gold(player['gold'])}g**\n"
             + (f"Use `!equip {item_def['name']}` to put it to work!" if item_def["type"] in ("tool", "cosmetic") else "")
         )
 
@@ -283,7 +283,7 @@ class EconomyCog(commands.Cog):
                 save_data(data)
             await ctx.send(
                 f"💰 Added **{amount} gold** to {ctx.author.display_name}. "
-                f"Balance: **{player['gold']} gold**"
+                f"Balance: **{fmt_gold(player['gold'])}g**"
             )
         except Exception as e:
             await ctx.send(f"❌ Error: {e}")

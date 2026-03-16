@@ -17,7 +17,7 @@ except ImportError:
     from backports.zoneinfo import ZoneInfo
 
 from config import GUILDS, ITEMS, XP_PER_LEVEL, DAILY_RESET_TZ
-from cogs.data import load_data, save_data, get_player, fmt_time, is_super
+from cogs.data import load_data, save_data, get_player, fmt_time, fmt_gold, is_super
 
 
 def next_reset_timestamp() -> float:
@@ -151,7 +151,7 @@ class CharacterCog(commands.Cog):
                 f"📋 **{target.display_name}**\n"
                 f"Guild: {guild_info}\n"
                 f"Level {player['level']} — `{xp_bar}` {player['xp']}/{xp_needed} XP\n"
-                f"💰 Gold: {player['gold']}\n"
+                f"💰 Gold: {fmt_gold(player['gold'])}g\n"
                 f"🔨 Gathers: {player['stats']['total_gathers']} | "
                 f"🎁 Loots: {player['stats']['total_loots']}\n"
                 f"⚒️ Tool: {tool_str}"

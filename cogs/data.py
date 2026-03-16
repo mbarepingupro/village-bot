@@ -15,17 +15,9 @@ from discord.ext import commands
 from config import DATA_FILE
 
 # ── Global file lock ──────────────────────────────────────────────────────────
-# Wrap every command that reads AND writes with:
-#   async with data_lock:
-#       data = load_data()
-#       ...
-#       save_data(data)
 data_lock = asyncio.Lock()
 
 # ── Per-user per-action lock ──────────────────────────────────────────────────
-# Prevents the same user firing the same command twice before the first
-# execution finishes (e.g. spamming !gather 50 times instantly).
-# Usage: async with user_lock(ctx.author.id, "gather"):
 _user_locks: dict[str, asyncio.Lock] = {}
 
 def user_lock(user_id: int, action: str) -> asyncio.Lock:
@@ -59,24 +51,29 @@ def get_player(data: dict, user) -> dict:
             "class":         None,
             "xp":            0,
             "level":         1,
-            "gold":          0,
+            "gold":          0.0,
             "inventory":     {},
             "cosmetics":     {},
             "equipped_tool": None,
             "cooldowns":     {},
+            "active_effects":{},
             "stats": {
                 "total_gathers": 0,
                 "total_loots":   0,
-                "gold_earned":   0,
+                "gold_earned":   0.0,
             }
         }
     p = data["players"][uid]
-    # backfill fields added after initial release
-    p.setdefault("gold", 0)
+    p.setdefault("gold", 0.0)
     p.setdefault("equipped_tool", None)
-    p.setdefault("stats", {}).setdefault("gold_earned", 0)
+    p.setdefault("active_effects", {})
+    p.setdefault("stats", {}).setdefault("gold_earned", 0.0)
     p["name"] = user.display_name
     return p
+
+def fmt_gold(amount: float) -> str:
+    """Format gold for display — always 1 decimal place."""
+    return f"{round(amount, 1):.1f}"
 
 def add_item(player: dict, item_id: str, qty: int = 1):
     inv = player["inventory"]
@@ -91,18 +88,20 @@ def remove_item(player: dict, item_id: str, qty: int = 1) -> bool:
         del inv[item_id]
     return True
 
-def add_gold(player: dict, amount: int):
+def add_gold(player: dict, amount: float):
     if amount <= 0:
         return
-    player["gold"] = player.get("gold", 0) + amount
+    player["gold"] = round(player.get("gold", 0.0) + amount, 1)
     player.setdefault("stats", {})
-    player["stats"]["gold_earned"] = player["stats"].get("gold_earned", 0) + amount
+    player["stats"]["gold_earned"] = round(
+        player["stats"].get("gold_earned", 0.0) + amount, 1
+    )
 
-def spend_gold(player: dict, amount: int) -> bool:
+def spend_gold(player: dict, amount: float) -> bool:
     """Deduct gold. Returns False if insufficient funds."""
-    if amount <= 0 or player.get("gold", 0) < amount:
+    if amount <= 0 or round(player.get("gold", 0.0), 1) < round(amount, 1):
         return False
-    player["gold"] -= amount
+    player["gold"] = round(player["gold"] - amount, 1)
     return True
 
 def cooldown_remaining(player: dict, action: str, seconds: int) -> int:
@@ -137,15 +136,6 @@ def sanitize_qty(qty, max_qty: int) -> int | None:
         return None
     return min(qty, max_qty)
 
-# ── Cog ───────────────────────────────────────────────────────────────────────
-
-class DataCog(commands.Cog):
-    pass
-
-async def setup(bot):
-    await bot.add_cog(DataCog(bot))
-
-
 def is_super(ctx) -> bool:
     """Returns True if the user has a SUPER_ROLES role (bypasses cooldowns)."""
     from config import SUPER_ROLES
@@ -159,3 +149,11 @@ def is_mod(ctx) -> bool:
     if isinstance(ctx.author, discord.Member):
         return any(r.name in MOD_ROLE_NAMES for r in ctx.author.roles)
     return False
+
+# ── Cog ───────────────────────────────────────────────────────────────────────
+
+class DataCog(commands.Cog):
+    pass
+
+async def setup(bot):
+    await bot.add_cog(DataCog(bot))

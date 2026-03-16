@@ -18,7 +18,7 @@ from config import (
 )
 from cogs.data import (
     load_data, save_data, get_player,
-    add_item, add_gold, cooldown_remaining, set_cooldown, add_xp, fmt_time
+    add_item, add_gold, cooldown_remaining, set_cooldown, add_xp, fmt_time, fmt_gold
 )
 
 # ── Loot tables ───────────────────────────────────────────────────────────────
@@ -173,7 +173,7 @@ class LootCog(commands.Cog):
             add_item(player, item_id, qty)
 
         # Gold reward
-        gold_gained = random.randint(*GOLD_LOOT_REWARD)
+        gold_gained = round(random.uniform(*GOLD_LOOT_REWARD), 1)
         add_gold(player, gold_gained)
 
         data.setdefault("loot_claimers", []).append(uid)
