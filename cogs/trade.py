@@ -64,8 +64,9 @@ class TradeCog(commands.Cog):
         try:
             if target is None or item_name is None or qty is None:
                 await ctx.send(
-                    "Usage: `!trade @user <resource> <qty>`\n"
-                    "Example: `!trade @Sofya fish 10`"
+                    "Usage: `!trade @user <item> <qty>`\n"
+                    "Example: `!trade @Sofya fish 10` or `!trade @Sofya mystery potion 1`\n"
+                    "Any item marked as tradeable can be traded."
                 )
                 return
 
@@ -93,16 +94,16 @@ class TradeCog(commands.Cog):
                         await ctx.send(f"⚠️ {target.display_name} needs to join a guild before they can receive trades.")
                         return
 
-                    # Match item — only resources
+                    # Match item — any item with tradeable: True
                     matched_id = None
                     for item_id, item_def in ITEMS.items():
-                        if (item_def.get("type") == "resource" and
+                        if (item_def.get("tradeable", False) and
                                 item_name.lower() in [item_id.lower(), item_def["name"].lower()]):
                             matched_id = item_id
                             break
 
                     if matched_id is None:
-                        await ctx.send(f"❌ `{item_name}` is not a tradeable resource.")
+                        await ctx.send(f"❌ `{item_name}` is not tradeable or doesn't exist.")
                         return
 
                     # Check sender has enough
