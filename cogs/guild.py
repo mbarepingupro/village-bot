@@ -274,11 +274,28 @@ class GuildCog(commands.Cog):
         """Show upgrade tiers and costs for a guild. Usage: !upgrades horny jail"""
         try:
             if guild_name is None:
-                # Show all guilds as a menu
-                lines = ["**🔨 Guild Upgrades — type `!upgrades <guild name>` for details:**\n"]
+                # Show all guilds with their upgrade names and descriptions
+                lines = ["**🔨 Guild Upgrades — type `!upgrades <guild name>` for full costs:**\n"]
                 for key, g in GUILDS.items():
-                    max_tier = len(GUILD_UPGRADES.get(key, []))
-                    lines.append(f"{g['emoji']} **{g['display_name']}** — {max_tier} upgrade tiers")
+                    upgrades_list = GUILD_UPGRADES.get(key, [])
+                    max_tier      = len(upgrades_list)
+                    data          = load_data()
+                    guild_state   = get_guild_data(data, key)
+                    current_tier  = guild_state["upgrade_tier"]
+                    save_data(data)
+
+                    lines.append(f"{g['emoji']} **{g['display_name']}** — Tier {current_tier}/{max_tier}")
+                    for i, upgrade in enumerate(upgrades_list):
+                        if i < current_tier:
+                            status = "✅"
+                        elif i == current_tier:
+                            status = "🔨"
+                        else:
+                            status = "🔒"
+                        lines.append(f"   {status} Tier {i+1}: **{upgrade['name']}** — *{upgrade['description']}*")
+                    lines.append("")
+
+                lines.append("Use `!upgrades <guild name>` to see costs and progress.")
                 await ctx.send("\n".join(lines))
                 return
 
