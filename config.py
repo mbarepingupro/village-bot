@@ -1,57 +1,62 @@
 """
 config.py — All customizable settings live here.
 =================================================
-To add a new guild:   add an entry to GUILDS dict below.
-To add a new item:    add an entry to ITEMS dict below.
-To change cooldowns:  edit the COOLDOWNS section.
+To add a new guild:        add an entry to GUILDS dict below.
+To add a new item:         add an entry to ITEMS dict below.
+To add a new upgrade:      add an entry to GUILD_UPGRADES dict below.
+To change cooldowns:       edit the COOLDOWNS section.
+To change sell prices:     edit SELL_PRICES.
+To change shop listings:   edit SHOP.
 """
 
 import os
 
-# ── Bot settings ─────────────────────────────────────────────────────────────
-BOT_TOKEN      = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
-COMMAND_PREFIX = "!"
-DATA_FILE      = "/app/data/village_data.json"
+# ── Bot settings ──────────────────────────────────────────────────────────────
+BOT_TOKEN        = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
+COMMAND_PREFIX   = "!"
+DATA_FILE        = "/app/data/village_data.json"
+BOT_CHANNEL_NAME = ""   # set to your channel name to restrict commands
 
-# IDs of Discord roles/users allowed to run mod commands (!startloot etc.)
-MOD_ROLE_NAMES = ["Moderator", "Mod", "streamer"]   # add your mod role names here
+# Roles allowed to run mod commands (!startloot, !addgold, etc.)
+MOD_ROLE_NAMES = ["Moderator", "Mod", "streamer"]
 
-# Users with these roles bypass all cooldowns and restrictions
-SUPER_ROLES = ["streamer"]   # replace with your actual role name in Discord
+# Roles that bypass all cooldowns and restrictions (for testing)
+SUPER_ROLES = ["streamer"]
 
-#Channel name where the bot works exclusiveky
-BOT_CHANNEL_NAME = "🛖🧊-penguin-village"    # exact name of your Discord channel
+# ── Timezone for daily reset ──────────────────────────────────────────────────
+# Guild switch resets daily at 00:00 in this timezone
+DAILY_RESET_TZ = "Europe/Berlin"
 
 # ── Cooldowns (in seconds) ────────────────────────────────────────────────────
 COOLDOWNS = {
-    "gather": 120,    # 2 minutes
+    "gather": 3600,   # 1 hour
     "craft":  300,    # 5 minutes
-    "loot":   3600,   # can only claim loot once per session
+    "loot":   3600,   # once per loot session
 }
 
-LOOT_WINDOW_SECONDS = 300   # how long the loot window stays open (5 min)
+LOOT_WINDOW_SECONDS = 300   # loot window open for 5 min
 
 # ── Guilds ────────────────────────────────────────────────────────────────────
-# Each guild assigns a class to members who join it.
-#
 # Fields:
-#   emoji        : displayed everywhere
-#   class_name   : the job title members get
-#   description  : shown in !help and !join
-#   gather_bonus : dict of item_id -> multiplier (e.g. 1.5 = 50% more of that item)
-#   special      : short string describing the unique mechanic (flavor text for now,
-#                  hook it up in cogs/gather.py when you want real logic)
-#   loot_item    : item_id of the exclusive loot drop for this guild
+#   emoji         : displayed everywhere
+#   display_name  : full name shown to users
+#   class_name    : job title members get
+#   description   : shown in !join list
+#   resources     : list of item_ids this guild gathers (exactly 2)
+#   gather_bonus  : item_id -> multiplier applied on top of base gather
+#   special       : unique mechanic description
+#   loot_item     : exclusive item from loot drops
 #
-# ➕ To add a new guild, copy one block and fill in the fields.
+# ➕ To add a new guild: copy a block, fill in the fields, done.
 
 GUILDS = {
     "horny_jail": {
         "emoji":        "🔒",
         "display_name": "Horny Jail",
         "class_name":   "Inmate",
-        "description":  "Chaos reigns. Bonus contraband, XP from mayhem.",
-        "gather_bonus": {"contraband": 2.0, "wood": 0.8},
+        "description":  "Chaos reigns. Eggs and wood from mayhem.",
+        "resources":    ["egg", "wood"],
+        "gather_bonus": {"egg": 1.8, "wood": 1.5},
         "special":      "Chaos Roll: 20% chance to double all resources on gather",
         "loot_item":    "get_out_of_jail_card",
     },
@@ -59,152 +64,338 @@ GUILDS = {
         "emoji":        "🦭",
         "display_name": "Sea Lion Pit",
         "class_name":   "Sea Lion",
-        "description":  "Masters of water. Best fish yields, splash bonuses.",
-        "gather_bonus": {"fish": 2.0, "stone": 0.9},
-        "special":      "Splash: nearby players get +1 fish when you gather",
+        "description":  "Masters of water. Fish and bones from the deep.",
+        "resources":    ["fish", "bone"],
+        "gather_bonus": {"fish": 2.0, "bone": 1.8},
+        "special":      "Splash: nearby players get +2 fish when you gather",
         "loot_item":    "golden_herring",
     },
     "club_soda": {
         "emoji":        "🥤",
         "display_name": "Club Soda",
         "class_name":   "Mixologist",
-        "description":  "Brew consumable buffs no other class can make.",
-        "gather_bonus": {"herbs": 1.8, "fish": 1.2},
-        "special":      "Craft: can combine resources into buff potions",
+        "description":  "Brew consumable buffs. Herbs and alcohol.",
+        "resources":    ["herb", "alcohol"],
+        "gather_bonus": {"herb": 1.8, "alcohol": 1.6},
+        "special":      "Brew: only class that can craft potions and buffs",
         "loot_item":    "mystery_potion",
     },
     "the_circus": {
         "emoji":        "🎪",
         "display_name": "The Circus",
         "class_name":   "Performer",
-        "description":  "Wild card. High risk, high reward on every gather.",
-        "gather_bonus": {},   # bonuses are random — see special
+        "description":  "Wild card. Candies and confetti everywhere.",
+        "resources":    ["candy", "confetti"],
+        "gather_bonus": {},   # wild roll — bonuses are random
         "special":      "Wild Roll: gather result is 0x to 3x at random",
         "loot_item":    "trick_coin",
     },
-    "wayward_hall": {
-        "emoji":        "🌀",
-        "display_name": "The Wayward Hall",
-        "class_name":   "Wanderer",
-        "description":  "Jack of all trades. Gathers every resource type equally.",
-        "gather_bonus": {"wood": 1.2, "stone": 1.2, "fish": 1.2, "herbs": 1.2},
-        "special":      "Roam: can gather from any biome without penalty",
-        "loot_item":    "wanderer_map",
+    "the_barracks": {
+        "emoji":        "⚔️",
+        "display_name": "The Barracks",
+        "class_name":   "Soldier",
+        "description":  "Disciplined warriors. Polar bear meat and fur.",
+        "resources":    ["meat", "fur"],
+        "gather_bonus": {"meat": 1.8, "fur": 1.6},
+        "special":      "Ration: gather cooldown reduced to 45 min instead of 1 hour",
+        "loot_item":    "ration_pack",
+    },
+    "cursed_temple": {
+        "emoji":        "🏚️",
+        "display_name": "Cursed Temple",
+        "class_name":   "Cultist",
+        "description":  "Dark rituals. Candles and soul shards.",
+        "resources":    ["candle", "soul_shard"],
+        "gather_bonus": {"candle": 1.8, "soul_shard": 1.5},
+        "special":      "Ritual: 15% chance to find a rare item on gather",
+        "loot_item":    "cursed_relic",
+    },
+    "the_guillotine": {
+        "emoji":        "🪓",
+        "display_name": "The Guillotine",
+        "class_name":   "Executioner",
+        "description":  "Cold and precise. Metal and blood beans.",
+        "resources":    ["metal", "blood_bean"],
+        "gather_bonus": {"metal": 1.8, "blood_bean": 1.6},
+        "special":      "Precision: always get max roll on one resource per gather",
+        "loot_item":    "executioner_hood",
     },
 
-    # ── ADD NEW GUILDS BELOW THIS LINE ─────────────────────────────────────
-    # "my_new_building": {
-    #     "emoji":        "🏚️",
-    #     "display_name": "My New Building",
+    # ── ADD NEW GUILDS BELOW THIS LINE ────────────────────────────────────────
+    # "my_building": {
+    #     "emoji":        "🏠",
+    #     "display_name": "My Building",
     #     "class_name":   "ClassName",
     #     "description":  "What this guild does.",
-    #     "gather_bonus": {"wood": 1.5},
-    #     "special":      "Describe the unique mechanic here",
+    #     "resources":    ["item_id_1", "item_id_2"],
+    #     "gather_bonus": {"item_id_1": 1.5},
+    #     "special":      "Describe the unique mechanic",
     #     "loot_item":    "item_id_here",
     # },
 }
 
-# ── Items ─────────────────────────────────────────────────────────────────────
-# Every item that can exist in the game is defined here.
+# ── Guild upgrades ────────────────────────────────────────────────────────────
+# Shared upgrades — the whole guild contributes resources to unlock.
+# Costs use resources from OTHER guilds to encourage switching.
 #
-# Fields:
+# Fields per upgrade:
 #   name        : display name
-#   emoji       : displayed in inventory
-#   type        : "resource" | "cosmetic" | "consumable" | "stream_unlock" | "special"
-#   slot        : (cosmetics only) "hat" | "outfit" | "accessory" — for avatar system
-#   description : shown in !inventory
-#   tradeable   : whether players can give it to others (future feature)
+#   description : what the upgrade does (flavor + mechanic tag)
+#   cost        : dict of item_id -> qty needed in the pool
+#   effect      : string tag used in gather.py to apply the bonus
 #
-# ➕ To add a new item, copy a block and fill it in.
+# ➕ To add a new upgrade tier: add another entry to the list.
+
+GUILD_UPGRADES = {
+    "horny_jail": [
+        {
+            "name":        "Reinforced Bars",
+            "description": "Chaos Roll chance increases to 30%.",
+            "cost":        {"fish": 20, "bone": 10},
+            "effect":      "chaos_boost",
+        },
+        {
+            "name":        "Crystal Shrine",
+            "description": "Chaos Roll now gives 3x instead of 2x.",
+            "cost":        {"soul_shard": 15, "candle": 20},
+            "effect":      "chaos_triple",
+        },
+    ],
+    "sea_lion_pit": [
+        {
+            "name":        "Fish Ladder",
+            "description": "Splash now hits 2 players instead of 1.",
+            "cost":        {"egg": 20, "wood": 15},
+            "effect":      "splash_double",
+        },
+        {
+            "name":        "Coral Throne",
+            "description": "Splash gives +3 fish instead of +2.",
+            "cost":        {"herb": 20, "alcohol": 10},
+            "effect":      "splash_triple",
+        },
+    ],
+    "club_soda": [
+        {
+            "name":        "Herb Garden",
+            "description": "Craft cooldown reduced to 3 minutes.",
+            "cost":        {"candy": 20, "confetti": 15},
+            "effect":      "craft_speed",
+        },
+        {
+            "name":        "Secret Menu",
+            "description": "Mixologists can craft Bone Brew and Scrambled Armor.",
+            "cost":        {"metal": 15, "blood_bean": 10},
+            "effect":      "secret_recipes",
+        },
+    ],
+    "the_circus": [
+        {
+            "name":        "Big Top",
+            "description": "Wild Roll minimum is now 0.5x instead of 0x.",
+            "cost":        {"fish": 20, "bone": 15},
+            "effect":      "wild_floor",
+        },
+        {
+            "name":        "Sequin Vault",
+            "description": "3x outcome is twice as likely.",
+            "cost":        {"meat": 15, "fur": 20},
+            "effect":      "wild_ceiling",
+        },
+    ],
+    "the_barracks": [
+        {
+            "name":        "Drill Grounds",
+            "description": "Gather cooldown drops to 30 minutes.",
+            "cost":        {"soul_shard": 15, "candle": 20},
+            "effect":      "barracks_speed",
+        },
+        {
+            "name":        "Armory",
+            "description": "+20% to all resources gathered.",
+            "cost":        {"egg": 20, "wood": 25},
+            "effect":      "armory_bonus",
+        },
+    ],
+    "cursed_temple": [
+        {
+            "name":        "Bone Altar",
+            "description": "Ritual chance increases to 25%.",
+            "cost":        {"meat": 20, "fur": 15},
+            "effect":      "ritual_boost",
+        },
+        {
+            "name":        "Candle Array",
+            "description": "Ritual can now find cursed exclusive items.",
+            "cost":        {"metal": 15, "blood_bean": 20},
+            "effect":      "ritual_cursed",
+        },
+    ],
+    "the_guillotine": [
+        {
+            "name":        "Sharpening Stone",
+            "description": "Precision now applies to both resources.",
+            "cost":        {"candle": 20, "soul_shard": 15},
+            "effect":      "precision_double",
+        },
+        {
+            "name":        "Execution Chamber",
+            "description": "+25% to metal and blood bean yields.",
+            "cost":        {"fish": 20, "herb": 20},
+            "effect":      "execution_bonus",
+        },
+    ],
+}
+
+# ── Items ─────────────────────────────────────────────────────────────────────
+# ➕ To add a new item: copy a block and fill it in.
 
 ITEMS = {
-    # ── Resources ──────────────────────────────────────────────────────────
+    # ── Guild resources ────────────────────────────────────────────────────────
+    "egg": {
+        "name": "Egg", "emoji": "🥚",
+        "type": "resource", "description": "Fragile but valuable.", "tradeable": True,
+    },
     "wood": {
         "name": "Wood", "emoji": "🪵",
         "type": "resource", "description": "Basic building material.", "tradeable": True,
-    },
-    "stone": {
-        "name": "Stone", "emoji": "🪨",
-        "type": "resource", "description": "Solid and reliable.", "tradeable": True,
     },
     "fish": {
         "name": "Fish", "emoji": "🐟",
         "type": "resource", "description": "Slippery. Good for trades.", "tradeable": True,
     },
-    "herbs": {
-        "name": "Herbs", "emoji": "🌿",
-        "type": "resource", "description": "Used in crafting potions.", "tradeable": True,
+    "bone": {
+        "name": "Bone", "emoji": "🦴",
+        "type": "resource", "description": "From the deep. Useful for dark crafts.", "tradeable": True,
     },
-    "contraband": {
-        "name": "Contraband", "emoji": "📦",
-        "type": "resource", "description": "Don't ask where this came from.", "tradeable": False,
+    "herb": {
+        "name": "Herb", "emoji": "🌿",
+        "type": "resource", "description": "Used in potions and brews.", "tradeable": True,
+    },
+    "alcohol": {
+        "name": "Alcohol", "emoji": "🍺",
+        "type": "resource", "description": "Distilled in Club Soda's back room.", "tradeable": True,
+    },
+    "candy": {
+        "name": "Candy", "emoji": "🍬",
+        "type": "resource", "description": "Sticky and sweet. The Circus runs on these.", "tradeable": True,
+    },
+    "confetti": {
+        "name": "Confetti", "emoji": "🎊",
+        "type": "resource", "description": "It gets everywhere.", "tradeable": True,
+    },
+    "meat": {
+        "name": "Polar Bear Meat", "emoji": "🥩",
+        "type": "resource", "description": "Tough but nutritious.", "tradeable": True,
+    },
+    "fur": {
+        "name": "Fur", "emoji": "🪶",
+        "type": "resource", "description": "Warm and tradeable.", "tradeable": True,
+    },
+    "candle": {
+        "name": "Candle", "emoji": "🕯️",
+        "type": "resource", "description": "Burns with an eerie light.", "tradeable": True,
+    },
+    "soul_shard": {
+        "name": "Soul Shard", "emoji": "🔮",
+        "type": "resource", "description": "A fragment of something that shouldn't exist.", "tradeable": False,
+    },
+    "metal": {
+        "name": "Metal", "emoji": "⚙️",
+        "type": "resource", "description": "Cold and sharp.", "tradeable": True,
+    },
+    "blood_bean": {
+        "name": "Blood Bean", "emoji": "🫘",
+        "type": "resource", "description": "Don't ask what it's made of.", "tradeable": False,
     },
 
-    # ── Guild exclusive loot drops ──────────────────────────────────────────
+    # ── Consumables ────────────────────────────────────────────────────────────
+    "mystery_potion": {
+        "name": "Mystery Potion", "emoji": "🧪",
+        "type": "consumable", "effect": "mystery",
+        "description": "Unknown effect. Use at your own risk.", "tradeable": True,
+    },
+    "bone_brew": {
+        "name": "Bone Brew", "emoji": "🍵",
+        "type": "consumable", "effect": "cooldown_reset",
+        "description": "Resets your gather cooldown immediately.", "tradeable": True,
+    },
+    "scrambled_armor": {
+        "name": "Scrambled Armor", "emoji": "🍳",
+        "type": "consumable", "effect": "gather_boost",
+        "description": "+50% resources on your next gather.", "tradeable": False,
+    },
+    "crystal_potion": {
+        "name": "Crystal Potion", "emoji": "💎",
+        "type": "consumable", "effect": "triple_gather",
+        "description": "2x gather for your next 3 gathers. Mixologist only.", "tradeable": False,
+    },
+    "meat_stew": {
+        "name": "Meat Stew", "emoji": "🍲",
+        "type": "consumable", "effect": "craft_reset",
+        "description": "Resets your craft cooldown immediately.", "tradeable": True,
+    },
+
+    # ── Special / loot exclusives ──────────────────────────────────────────────
     "get_out_of_jail_card": {
         "name": "Get Out of Jail Card", "emoji": "🃏",
-        "type": "special", "description": "Removes your gather cooldown once.", "tradeable": False,
+        "type": "consumable", "effect": "cooldown_reset",
+        "description": "Resets your gather cooldown once.", "tradeable": False,
     },
     "golden_herring": {
         "name": "Golden Herring", "emoji": "🥇",
-        "type": "special", "description": "Worth 10 fish. Very shiny.", "tradeable": True,
-    },
-    "mystery_potion": {
-        "name": "Mystery Potion", "emoji": "🧪",
-        "type": "consumable", "description": "A brew of unknown effect. Use at your own risk.", "tradeable": True,
+        "type": "consumable", "effect": "golden_herring",
+        "description": "Worth 10 fish. Very shiny.", "tradeable": True,
     },
     "trick_coin": {
         "name": "Trick Coin", "emoji": "🪙",
-        "type": "special", "description": "Flip it: heads = double next gather, tails = nothing.", "tradeable": False,
+        "type": "consumable", "effect": "trick_coin",
+        "description": "Heads = double next gather. Tails = nothing.", "tradeable": False,
     },
-    "wanderer_map": {
-        "name": "Wanderer's Map", "emoji": "🗺️",
-        "type": "special", "description": "Shows a hidden gather location. Bonus resources once.", "tradeable": False,
+    "ration_pack": {
+        "name": "Ration Pack", "emoji": "🎒",
+        "type": "consumable", "effect": "cooldown_reset",
+        "description": "Emergency supplies. Resets gather cooldown.", "tradeable": False,
     },
-
-    # ── Cosmetics (avatar-ready) ────────────────────────────────────────────
-    "jester_hat": {
-        "name": "Jester Hat", "emoji": "🎭",
+    "cursed_relic": {
+        "name": "Cursed Relic", "emoji": "☠️",
+        "type": "consumable", "effect": "mystery",
+        "description": "A relic from the temple. Its power is unknown.", "tradeable": False,
+    },
+    "executioner_hood": {
+        "name": "Executioner's Hood", "emoji": "🪖",
         "type": "cosmetic", "slot": "hat",
-        "description": "For the true performer.", "tradeable": False,
-    },
-    "inmate_outfit": {
-        "name": "Inmate Outfit", "emoji": "👔",
-        "type": "cosmetic", "slot": "outfit",
-        "description": "Stripes. Classic.", "tradeable": False,
+        "description": "Worn by those who carry out the sentence.", "tradeable": False,
     },
 
-    # ── Stream unlocks ──────────────────────────────────────────────────────
-    "stream_command_slot": {
-        "name": "Stream Command Slot", "emoji": "📺",
-        "type": "stream_unlock",
-        "description": "Unlocks a custom command usable on stream. Activate with the streamer.", "tradeable": False,
+    # ── Crafted consumables ────────────────────────────────────────────────────
+    "sequin_charm": {
+        "name": "Sequin Charm", "emoji": "✨",
+        "type": "consumable", "effect": "wild_floor_once",
+        "description": "Wild Roll minimum is 1x for one gather.", "tradeable": False,
     },
 
-    # ── Gather tools (buyable in shop, boost yield) ────────────────────────────
+    # ── Tools ──────────────────────────────────────────────────────────────────
     "iron_axe": {
         "name": "Iron Axe", "emoji": "🪓",
         "type": "tool", "slot": "tool",
         "description": "+50% wood on every gather while equipped.",
-        "tradeable": False,
-        "bonus": {"wood": 0.5},   # added on top of base, stacks with class bonus
+        "tradeable": False, "bonus": {"wood": 0.5},
     },
     "fishing_rod": {
         "name": "Fishing Rod", "emoji": "🎣",
         "type": "tool", "slot": "tool",
         "description": "+50% fish on every gather while equipped.",
-        "tradeable": False,
-        "bonus": {"fish": 0.5},
+        "tradeable": False, "bonus": {"fish": 0.5},
     },
     "pickaxe": {
         "name": "Pickaxe", "emoji": "⛏️",
         "type": "tool", "slot": "tool",
-        "description": "+50% stone on every gather while equipped.",
-        "tradeable": False,
-        "bonus": {"stone": 0.5},
+        "description": "+50% metal on every gather while equipped.",
+        "tradeable": False, "bonus": {"metal": 0.5},
     },
 
-    # ── Cosmetics (avatar-ready) ────────────────────────────────────────────
+    # ── Cosmetics ──────────────────────────────────────────────────────────────
     "jester_hat": {
         "name": "Jester Hat", "emoji": "🎭",
         "type": "cosmetic", "slot": "hat",
@@ -220,22 +411,26 @@ ITEMS = {
         "type": "cosmetic", "slot": "hat",
         "description": "Honk.", "tradeable": False,
     },
-    "wanderer_cloak": {
-        "name": "Wanderer's Cloak", "emoji": "🧥",
+    "soldier_helmet": {
+        "name": "Soldier Helmet", "emoji": "⛑️",
+        "type": "cosmetic", "slot": "hat",
+        "description": "Worn by the disciplined.", "tradeable": False,
+    },
+    "cultist_robe": {
+        "name": "Cultist Robe", "emoji": "🌑",
         "type": "cosmetic", "slot": "outfit",
-        "description": "Worn by those who belong everywhere and nowhere.",
-        "tradeable": False,
+        "description": "For the devoted.", "tradeable": False,
     },
 
-    # ── Stream unlocks ──────────────────────────────────────────────────────
+    # ── Stream unlocks ─────────────────────────────────────────────────────────
     "stream_command_slot": {
         "name": "Stream Command Slot", "emoji": "📺",
         "type": "stream_unlock",
-        "description": "Unlocks a custom command usable on stream. Activate with the streamer.",
+        "description": "Unlocks a custom stream command. Activate with the streamer.",
         "tradeable": False,
     },
 
-    # ── ADD NEW ITEMS BELOW THIS LINE ───────────────────────────────────────
+    # ── ADD NEW ITEMS BELOW THIS LINE ──────────────────────────────────────────
     # "my_item": {
     #     "name": "My Item", "emoji": "✨",
     #     "type": "resource",
@@ -244,55 +439,99 @@ ITEMS = {
 }
 
 # ── Gather table ──────────────────────────────────────────────────────────────
-# Base resource amounts before class bonuses are applied.
+# Base amounts per guild resource before class bonuses.
+# Each guild only rolls its own 2 resources.
 # Format: item_id -> (min, max)
 
 BASE_GATHER = {
-    "wood":  (2, 6),
-    "stone": (1, 4),
-    "fish":  (0, 3),
-    "herbs": (0, 2),
+    "egg":        (2, 6),
+    "wood":       (2, 6),
+    "fish":       (2, 6),
+    "bone":       (1, 4),
+    "herb":       (2, 5),
+    "alcohol":    (1, 4),
+    "candy":      (2, 6),
+    "confetti":   (2, 8),
+    "meat":       (1, 4),
+    "fur":        (1, 4),
+    "candle":     (1, 4),
+    "soul_shard": (1, 3),
+    "metal":      (1, 4),
+    "blood_bean": (1, 3),
 }
 
-# ── Gold ──────────────────────────────────────────────────────────────────────
-# Gold is a currency, not a gathered resource.
-# Earned by: selling resources, loot drops, future combat rewards.
+# ── Craft recipes ──────────────────────────────────────────────────────────────
+# Format: result_item_id -> {"needs": {item_id: qty}, "class_only": None | "ClassName"}
+# ➕ Add new recipes here.
 
-GOLD_LOOT_REWARD = (5, 20)    # (min, max) gold from a loot drop
+RECIPES = {
+    "mystery_potion": {
+        "needs":      {"herb": 3, "alcohol": 1},
+        "class_only": "Mixologist",
+        "description": "3 herbs + 1 alcohol → Mystery Potion (Mixologist only)",
+    },
+    "bone_brew": {
+        "needs":      {"bone": 2, "herb": 2},
+        "class_only": None,
+        "description": "2 bones + 2 herbs → Bone Brew (resets gather cooldown)",
+    },
+    "scrambled_armor": {
+        "needs":      {"egg": 5, "fur": 3},
+        "class_only": None,
+        "description": "5 eggs + 3 fur → Scrambled Armor (+50% next gather)",
+    },
+    "crystal_potion": {
+        "needs":      {"soul_shard": 3, "alcohol": 2},
+        "class_only": "Mixologist",
+        "description": "3 soul shards + 2 alcohol → Crystal Potion (2x for 3 gathers, Mixologist only)",
+    },
+    "sequin_charm": {
+        "needs":      {"confetti": 4, "candle": 2},
+        "class_only": None,
+        "description": "4 confetti + 2 candles → Sequin Charm (Wild Roll min 1x once)",
+    },
+    "meat_stew": {
+        "needs":      {"meat": 4, "fish": 2},
+        "class_only": None,
+        "description": "4 polar bear meat + 2 fish → Meat Stew (resets craft cooldown)",
+    },
+}
 
-# Sell prices: how much gold 1 unit of each resource is worth.
-# ➕ Add any resource here to make it sellable.
+# ── Gold ───────────────────────────────────────────────────────────────────────
+GOLD_LOOT_REWARD = (5, 20)
+
 SELL_PRICES = {
+    "egg":        2,
     "wood":       1,
-    "stone":      1,
     "fish":       2,
-    "herbs":      3,
-    "contraband": 5,
+    "bone":       3,
+    "herb":       3,
+    "alcohol":    4,
+    "candy":      2,
+    "confetti":   2,
+    "meat":       4,
+    "fur":        4,
+    "candle":     3,
+    "soul_shard": 8,
+    "metal":      5,
+    "blood_bean": 6,
 }
 
-# ── Shop ──────────────────────────────────────────────────────────────────────
-# Items available in !shop.
-# Format: item_id -> {"price": gold_cost, "guild_only": None | "guild_key"}
-# guild_only restricts purchase to members of that guild.
-# ➕ Add new shop listings here — item must also exist in ITEMS.
-
+# ── Shop ───────────────────────────────────────────────────────────────────────
 SHOP = {
-    # Tools
-    "iron_axe":    {"price": 30,  "guild_only": None},
-    "fishing_rod": {"price": 30,  "guild_only": None},
-    "pickaxe":     {"price": 30,  "guild_only": None},
-
-    # Cosmetics
-    "jester_hat":      {"price": 50,  "guild_only": "the_circus"},
-    "inmate_outfit":   {"price": 50,  "guild_only": "horny_jail"},
-    "sea_lion_hood":   {"price": 50,  "guild_only": "sea_lion_pit"},
-    "wanderer_cloak":  {"price": 50,  "guild_only": "wayward_hall"},
-
-    # ── ADD NEW SHOP ITEMS BELOW THIS LINE ────────────────────────────────
-    # "my_item": {"price": 100, "guild_only": None},
+    "iron_axe":         {"price": 30,  "guild_only": None},
+    "fishing_rod":      {"price": 30,  "guild_only": None},
+    "pickaxe":          {"price": 30,  "guild_only": None},
+    "jester_hat":       {"price": 50,  "guild_only": "the_circus"},
+    "inmate_outfit":    {"price": 50,  "guild_only": "horny_jail"},
+    "sea_lion_hood":    {"price": 50,  "guild_only": "sea_lion_pit"},
+    "soldier_helmet":   {"price": 50,  "guild_only": "the_barracks"},
+    "cultist_robe":     {"price": 50,  "guild_only": "cursed_temple"},
+    "executioner_hood": {"price": 50,  "guild_only": "the_guillotine"},
+    # ── ADD NEW SHOP ITEMS BELOW ──────────────────────────────────────────────
 }
 
 # ── XP & Levels ───────────────────────────────────────────────────────────────
 XP_PER_GATHER  = 10
 XP_PER_LOOT    = 25
-XP_PER_LEVEL   = 100   # XP needed to level up (flat for now, easy to make a curve)
+XP_PER_LEVEL   = 100

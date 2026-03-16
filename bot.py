@@ -2,7 +2,6 @@
 mbarepingu Village Bot — bot.py
 ================================
 Entry point. Loads config and all feature modules (cogs).
-You rarely need to edit this file.
 """
 
 import asyncio
@@ -16,10 +15,12 @@ bot = commands.Bot(command_prefix=COMMAND_PREFIX, intents=intents, help_command=
 
 COGS = [
     "cogs.data",       # shared save/load layer
-    "cogs.character",  # !join, !character, !inventory
+    "cogs.guild",      # guild contributions and upgrades
+    "cogs.character",  # !join, !profile, !inventory
     "cogs.gather",     # !gather, !craft
     "cogs.economy",    # !gold, !sell, !shop, !buy, !equip
     "cogs.loot",       # !startloot, !loot
+    "cogs.items",      # !use
     "cogs.help",       # !help
 ]
 
