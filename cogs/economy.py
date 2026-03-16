@@ -19,18 +19,6 @@ class EconomyCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # ── !addgold ─────────────────────────────────────────────────────────────────
-    @commands.command(name="addgold")
-    async def addgold(self, ctx, amount: int = 9999):
-        """[MOD] Add gold to yourself for testing."""
-        if not is_super(ctx):
-            return
-        data   = load_data()
-        player = get_player(data, ctx.author)
-        add_gold(player, amount)
-        save_data(data)
-        await ctx.send(f"💰 Added **{amount} gold** to {ctx.author.display_name}. Balance: **{player['gold']} gold**")
-    
     # ── !gold ─────────────────────────────────────────────────────────────────
     @commands.command(name="gold", aliases=["wallet", "coins"])
     async def gold(self, ctx):
@@ -138,13 +126,10 @@ class EconomyCog(commands.Cog):
 
             tag = "✅ owned" if owned else f"{price}💰"
 
-            if guild_key and player.get("guild") != guild_key and not is_super(ctx):
-                try:
-                    guild_name = GUILDS.get(guild_key, {}).get("display_name", guild_key)
-                    lock = "" if player_guild == guild_key else f" 🔒 *{guild_name} only*"
-                    exclusives.append(f"{item['emoji']} **{item['name']}** — {tag}{lock}\n   *{item['description']}*")
-                except Exception as e:
-                    await ctx.send(f"❌ Error: {e}")
+            if guild_key:
+                guild_name = GUILDS.get(guild_key, {}).get("display_name", guild_key)
+                lock = "" if player_guild == guild_key else f" 🔒 *{guild_name} only*"
+                exclusives.append(f"{item['emoji']} **{item['name']}** — {tag}{lock}\n   *{item['description']}*")
             elif item["type"] == "tool":
                 tools.append(f"{item['emoji']} **{item['name']}** — {tag}\n   *{item['description']}*")
             else:
@@ -200,12 +185,9 @@ class EconomyCog(commands.Cog):
             player.get("equipped_tool") == matched_id or
             matched_id in player.get("cosmetics", {}).values()
         )
-        if already_has and not is_super(ctx):
-            try:
-                await ctx.send(f"✅ You already own **{item_def['emoji']} {item_def['name']}**.")
-                return
-            except Exception as e:
-                await ctx.send(f"❌ Error: {e}")
+        if already_has:
+            await ctx.send(f"✅ You already own **{item_def['emoji']} {item_def['name']}**.")
+            return
 
         # Funds check
         price = listing["price"]

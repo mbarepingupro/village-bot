@@ -9,8 +9,8 @@ CONCURRENCY PROTECTION:
 - save_data()    : atomic write (temp file + rename) — no corrupt saves
 """
 
-import discord
 import json, os, time, asyncio
+import discord
 from discord.ext import commands
 from config import DATA_FILE
 
@@ -136,14 +136,6 @@ def sanitize_qty(qty, max_qty: int) -> int | None:
     if qty <= 0:
         return None
     return min(qty, max_qty)
-
-def is_super(ctx) -> bool:
-    from config import SUPER_ROLES
-    if isinstance(ctx.author, discord.Member):
-        return any(r.name in SUPER_ROLES for r in ctx.author.roles)
-    return False
-
-
 
 # ── Cog ───────────────────────────────────────────────────────────────────────
 
