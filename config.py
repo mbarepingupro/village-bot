@@ -328,12 +328,12 @@ ITEMS = {
     "protein_shake": {
         "name": "Protein Shake", "emoji": "🥤",
         "type": "consumable", "effect": "gather_boost",
-        "description": "+50% resources on your next gather.", "tradeable": False,
+        "description": "+50% resources on your next gather.", "tradeable": True,
     },
     "crystal_potion": {
         "name": "Crystal Potion", "emoji": "💎",
         "type": "consumable", "effect": "triple_gather",
-        "description": "2x gather for your next 3 gathers. Mixologist only.", "tradeable": False,
+        "description": "2x gather for your next 3 gathers. Mixologist only.", "tradeable": True,
     },
     "meat_stew": {
         "name": "Meat Stew", "emoji": "🍲",
