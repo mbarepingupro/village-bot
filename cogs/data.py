@@ -144,3 +144,18 @@ class DataCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(DataCog(bot))
+
+
+def is_super(ctx) -> bool:
+    """Returns True if the user has a SUPER_ROLES role (bypasses cooldowns)."""
+    from config import SUPER_ROLES
+    if isinstance(ctx.author, discord.Member):
+        return any(r.name in SUPER_ROLES for r in ctx.author.roles)
+    return False
+
+def is_mod(ctx) -> bool:
+    """Returns True if the user has a MOD_ROLE_NAMES role."""
+    from config import MOD_ROLE_NAMES
+    if isinstance(ctx.author, discord.Member):
+        return any(r.name in MOD_ROLE_NAMES for r in ctx.author.roles)
+    return False
