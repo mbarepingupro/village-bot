@@ -269,6 +269,24 @@ class EconomyCog(commands.Cog):
         else:
             await ctx.send(f"❌ **{item_def.get('name', matched_id)}** can't be equipped.")
 
+    # ── !addgolf ────────────────────────────────────────────────────────────────
+    @commands.command(name="addgold")
+        async def addgold(self, ctx, amount: int = 9999):
+            """[MOD] Add gold for testing. Usage: !addgold or !addgold 50000"""
+            try:
+                if not is_super(ctx):
+                    return
+                async with data_lock:
+                    data   = load_data()
+                    player = get_player(data, ctx.author)
+                    add_gold(player, amount)
+                    save_data(data)
+                await ctx.send(
+                    f"💰 Added **{amount} gold** to {ctx.author.display_name}. "
+                    f"Balance: **{player['gold']} gold**"
+                )
+            except Exception as e:
+                await ctx.send(f"❌ Error: {e}")
 
 async def setup(bot):
     await bot.add_cog(EconomyCog(bot))
