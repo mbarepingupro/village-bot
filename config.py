@@ -62,7 +62,7 @@ GUILDS = {
         "description":  "Chaos reigns. Eggs and wood from mayhem.",
         "resources":    ["egg", "wood"],
         "gather_bonus": {"egg": 1.8, "wood": 1.5},
-        "special":      "Chaos Roll: 20% chance to double all resources on gather",
+        "special":      "working HARD: 20% chance to double all resources on gather",
         "loot_item":    "get_out_of_jail_card",
     },
     "sea_lion_pit": {
@@ -112,7 +112,7 @@ GUILDS = {
         "description":  "Dark rituals. Candles and soul shards.",
         "resources":    ["candle", "soul_shard"],
         "gather_bonus": {"candle": 1.8, "soul_shard": 1.5},
-        "special":      "Ritual: 15% chance to find a rare item on gather",
+        "special":      "Ritual: 15% chance to find a random resource from any guild on gather",
         "loot_item":    "cursed_relic",
     },
     "the_guillotine": {
@@ -160,7 +160,7 @@ GUILD_UPGRADES = {
             "effect":      "chaos_boost",
         },
         {
-            "name":        "Crystal Shrine",
+            "name":        "Morning Wood",
             "description": "Chaos Roll now gives 3x instead of 2x.",
             "cost":        {"soul_shard": 15, "candle": 20},
             "effect":      "chaos_triple",
