@@ -394,6 +394,72 @@ ITEMS = {
         "description": "+50% metal on every gather while equipped.",
         "tradeable": False, "bonus": {"metal": 0.5},
     },
+    "egg_basket": {
+        "name": "Egg Basket", "emoji": "🧺",
+        "type": "tool", "slot": "tool",
+        "description": "+50% eggs on every gather while equipped.",
+        "tradeable": False, "bonus": {"egg": 0.5},
+    },
+    "bone_saw": {
+        "name": "Bone Saw", "emoji": "🪚",
+        "type": "tool", "slot": "tool",
+        "description": "+50% bones on every gather while equipped.",
+        "tradeable": False, "bonus": {"bone": 0.5},
+    },
+    "herb_pouch": {
+        "name": "Herb Pouch", "emoji": "👜",
+        "type": "tool", "slot": "tool",
+        "description": "+50% herbs on every gather while equipped.",
+        "tradeable": False, "bonus": {"herb": 0.5},
+    },
+    "flask": {
+        "name": "Flask", "emoji": "🧴",
+        "type": "tool", "slot": "tool",
+        "description": "+50% alcohol on every gather while equipped.",
+        "tradeable": False, "bonus": {"alcohol": 0.5},
+    },
+    "candy_bag": {
+        "name": "Candy Bag", "emoji": "🎀",
+        "type": "tool", "slot": "tool",
+        "description": "+50% candies on every gather while equipped.",
+        "tradeable": False, "bonus": {"candy": 0.5},
+    },
+    "confetti_cannon": {
+        "name": "Confetti Cannon", "emoji": "🎉",
+        "type": "tool", "slot": "tool",
+        "description": "+50% confetti on every gather while equipped.",
+        "tradeable": False, "bonus": {"confetti": 0.5},
+    },
+    "hunting_knife": {
+        "name": "Hunting Knife", "emoji": "🔪",
+        "type": "tool", "slot": "tool",
+        "description": "+50% polar bear meat on every gather while equipped.",
+        "tradeable": False, "bonus": {"meat": 0.5},
+    },
+    "fur_trap": {
+        "name": "Fur Trap", "emoji": "🪤",
+        "type": "tool", "slot": "tool",
+        "description": "+50% fur on every gather while equipped.",
+        "tradeable": False, "bonus": {"fur": 0.5},
+    },
+    "candle_mold": {
+        "name": "Candle Mold", "emoji": "🕯️",
+        "type": "tool", "slot": "tool",
+        "description": "+50% candles on every gather while equipped.",
+        "tradeable": False, "bonus": {"candle": 0.5},
+    },
+    "soul_jar": {
+        "name": "Soul Jar", "emoji": "🫙",
+        "type": "tool", "slot": "tool",
+        "description": "+50% soul shards on every gather while equipped.",
+        "tradeable": False, "bonus": {"soul_shard": 0.5},
+    },
+    "blood_vial": {
+        "name": "Blood Vial", "emoji": "💉",
+        "type": "tool", "slot": "tool",
+        "description": "+50% blood beans on every gather while equipped.",
+        "tradeable": False, "bonus": {"blood_bean": 0.5},
+    },
 
     # ── Cosmetics ──────────────────────────────────────────────────────────────
     "jester_hat": {
@@ -528,6 +594,17 @@ SHOP = {
     "soldier_helmet":   {"price": 50,  "guild_only": "the_barracks"},
     "cultist_robe":     {"price": 50,  "guild_only": "cursed_temple"},
     "executioner_hood": {"price": 50,  "guild_only": "the_guillotine"},
+    "egg_basket":       {"price": 30, "guild_only": None},
+    "bone_saw":         {"price": 30, "guild_only": None},
+    "herb_pouch":       {"price": 30, "guild_only": None},
+    "flask":            {"price": 30, "guild_only": None},
+    "candy_bag":        {"price": 30, "guild_only": None},
+    "confetti_cannon":  {"price": 30, "guild_only": None},
+    "hunting_knife":    {"price": 30, "guild_only": None},
+    "fur_trap":         {"price": 30, "guild_only": None},
+    "candle_mold":      {"price": 30, "guild_only": None},
+    "soul_jar":         {"price": 30, "guild_only": None},
+    "blood_vial":       {"price": 30, "guild_only": None},
     # ── ADD NEW SHOP ITEMS BELOW ──────────────────────────────────────────────
 }
 
