@@ -17,6 +17,11 @@ COMMAND_PREFIX   = "!"
 DATA_FILE        = "/app/data/village_data.json"
 BOT_CHANNEL_NAME = ""   # set to your channel name to restrict commands
 
+# Auto-loot trigger — Streamcord go-live channel
+GO_LIVE_CHANNEL  = "🔴-live-now"           # Streamcord go-live channel
+GO_LIVE_TRIGGER  = "twitch.tv/mbarepingu"   # string to match in the message
+VILLAGE_CHANNEL  = "🛖🧊-penguin-village"    # village bot channel
+
 # Roles allowed to run mod commands (!startloot, !addgold, etc.)
 MOD_ROLE_NAMES = ["Moderator", "Mod", "streamer"]
 
@@ -34,7 +39,7 @@ COOLDOWNS = {
     "loot":   3600,   # once per loot session
 }
 
-LOOT_WINDOW_SECONDS = 300   # loot window open for 5 min
+LOOT_WINDOW_SECONDS = 600   # loot window open for 10 min
 
 # ── Guilds ────────────────────────────────────────────────────────────────────
 # Fields:
@@ -320,8 +325,8 @@ ITEMS = {
         "type": "consumable", "effect": "cooldown_reset",
         "description": "Resets your gather cooldown immediately.", "tradeable": True,
     },
-    "scrambled_armor": {
-        "name": "Scrambled Armor", "emoji": "🍳",
+    "protein_shake": {
+        "name": "Protein Shake", "emoji": "🥤",
         "type": "consumable", "effect": "gather_boost",
         "description": "+50% resources on your next gather.", "tradeable": False,
     },
@@ -475,7 +480,7 @@ RECIPES = {
         "class_only": None,
         "description": "2 bones + 2 herbs → Bone Brew (resets gather cooldown)",
     },
-    "scrambled_armor": {
+    "protein_shake": {
         "needs":      {"egg": 5, "fur": 3},
         "class_only": None,
         "description": "5 eggs + 3 fur → Scrambled Armor (+50% next gather)",
