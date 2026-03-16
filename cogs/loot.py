@@ -5,6 +5,11 @@ Commands:
   !startloot  (mod only) — opens the loot window
   !endloot    (mod only) — force-closes the window early
   !loot       (everyone) — claim during the window
+
+Protection:
+  - One claim per user per event (checked inside data_lock)
+  - user_lock prevents same user spamming before first claim saves
+  - Window expiry checked inside lock
 """
 
 import time
@@ -18,64 +23,63 @@ from config import (
 )
 from cogs.data import (
     load_data, save_data, get_player,
-    add_item, add_gold, cooldown_remaining, set_cooldown, add_xp, fmt_time, fmt_gold
+    add_item, add_gold, cooldown_remaining, set_cooldown,
+    add_xp, fmt_time, fmt_gold, data_lock, user_lock, is_mod
 )
 
 # ── Loot tables ───────────────────────────────────────────────────────────────
-# Each entry: (item_id, min_qty, max_qty, weight)
-# Higher weight = more likely to be picked.
-# Add more rows to make loot richer.
-
 BASE_LOOT_TABLE = [
-    ("wood",   2, 6,  40),
-    ("stone",  1, 4,  40),
-    ("fish",   1, 3,  30),
-    ("herbs",  1, 2,  20),
+    ("egg",      2, 5,  15),
+    ("wood",     2, 6,  15),
+    ("fish",     2, 5,  15),
+    ("bone",     1, 4,  12),
+    ("herb",     1, 4,  12),
+    ("candy",    2, 6,  15),
+    ("confetti", 2, 8,  15),
+    ("meat",     1, 4,  10),
+    ("fur",      1, 4,  10),
+    ("alcohol",  1, 3,  10),
+    ("candle",   1, 4,  10),
+    ("metal",    1, 3,   8),
+    ("blood_bean", 1, 2, 6),
+    ("soul_shard", 1, 2, 4),
 ]
 
 RARE_LOOT_TABLE = [
-    ("stream_command_slot", 1, 1, 5),
-    ("jester_hat",          1, 1, 8),
-    ("inmate_outfit",       1, 1, 8),
+    ("stream_command_slot", 1, 1, 3),
+    ("trick_coin",          1, 1, 8),
+    ("bone_brew",           1, 1, 10),
+    ("scrambled_armor",     1, 1, 8),
 ]
 
-# ── Helper ────────────────────────────────────────────────────────────────────
-
-def is_mod(ctx) -> bool:
-    if isinstance(ctx.author, discord.Member):
-        return any(r.name in MOD_ROLE_NAMES for r in ctx.author.roles)
-    return False
 
 def weighted_pick(table):
     items   = [(i, mn, mx) for i, mn, mx, _ in table]
     weights = [w for _, _, _, w in table]
     return random.choices(items, weights=weights, k=1)[0]
 
-def roll_loot(player: dict) -> list[tuple[str, int]]:
-    """
-    Roll a loot bundle for a player based on their level and guild.
-    Returns list of (item_id, qty).
-    """
+
+def roll_loot(player: dict) -> list:
     results = {}
 
-    # Base drop: 2–3 common items
+    # 2–3 base resources from the general pool
     for _ in range(random.randint(2, 3)):
         item_id, mn, mx = weighted_pick(BASE_LOOT_TABLE)
         qty = random.randint(mn, mx)
         results[item_id] = results.get(item_id, 0) + qty
 
-    # Level bonus: extra item every 5 levels
+    # Level bonus
     if player["level"] >= 5:
         item_id, mn, mx = weighted_pick(BASE_LOOT_TABLE)
         results[item_id] = results.get(item_id, 0) + random.randint(mn, mx)
 
-    # Rare roll: ~15% chance
+    # 15% rare roll
     if random.random() < 0.15:
         item_id, mn, mx = weighted_pick(RARE_LOOT_TABLE)
         results[item_id] = results.get(item_id, 0) + random.randint(mn, mx)
 
-    # Guild exclusive drop: ~25% chance
-    if player["guild"] and player["guild"] in GUILDS:
+    # 25% guild exclusive
+    if player.get("guild") and player["guild"] in GUILDS:
         if random.random() < 0.25:
             exclusive = GUILDS[player["guild"]]["loot_item"]
             results[exclusive] = results.get(exclusive, 0) + 1
@@ -91,20 +95,20 @@ class LootCog(commands.Cog):
     # ── !startloot ────────────────────────────────────────────────────────────
     @commands.command(name="startloot")
     async def startloot(self, ctx):
-        """[MOD] Open the loot window. Everyone has 5 minutes to !loot."""
+        """[MOD] Open the loot window."""
         if not is_mod(ctx):
             await ctx.send("❌ Only mods can start a loot drop.")
             return
 
-        data = load_data()
-        if data.get("loot_active"):
-            await ctx.send("⚠️ A loot window is already open!")
-            return
-
-        data["loot_active"]   = True
-        data["loot_end_time"] = time.time() + LOOT_WINDOW_SECONDS
-        data["loot_claimers"] = []   # track who claimed this session
-        save_data(data)
+        async with data_lock:
+            data = load_data()
+            if data.get("loot_active"):
+                await ctx.send("⚠️ A loot window is already open!")
+                return
+            data["loot_active"]   = True
+            data["loot_end_time"] = time.time() + LOOT_WINDOW_SECONDS
+            data["loot_claimers"] = []
+            save_data(data)
 
         mins = LOOT_WINDOW_SECONDS // 60
         await ctx.send(
@@ -116,20 +120,20 @@ class LootCog(commands.Cog):
     # ── !endloot ──────────────────────────────────────────────────────────────
     @commands.command(name="endloot")
     async def endloot(self, ctx):
-        """[MOD] Force-close the loot window early."""
+        """[MOD] Force-close the loot window."""
         if not is_mod(ctx):
             await ctx.send("❌ Only mods can end a loot drop.")
             return
 
-        data = load_data()
-        if not data.get("loot_active"):
-            await ctx.send("⚠️ No loot window is currently open.")
-            return
-
-        count = len(data.get("loot_claimers", []))
-        data["loot_active"]   = False
-        data["loot_end_time"] = 0
-        save_data(data)
+        async with data_lock:
+            data = load_data()
+            if not data.get("loot_active"):
+                await ctx.send("⚠️ No loot window is currently open.")
+                return
+            count = len(data.get("loot_claimers", []))
+            data["loot_active"]   = False
+            data["loot_end_time"] = 0
+            save_data(data)
 
         await ctx.send(f"🔒 Loot window closed. **{count}** players claimed drops.")
 
@@ -137,66 +141,82 @@ class LootCog(commands.Cog):
     @commands.command(name="loot")
     async def loot(self, ctx):
         """Claim your loot during a live stream loot drop."""
-        data   = load_data()
-        player = get_player(data, ctx.author)
+        try:
+            # Per-user lock — blocks the same user claiming twice simultaneously
+            if user_lock(ctx.author.id, "loot").locked():
+                return
 
-        # Window check
-        if not data.get("loot_active"):
-            await ctx.send("🔒 No loot drop is active right now. Watch for `!startloot` when the stream goes live!")
-            return
+            async with user_lock(ctx.author.id, "loot"):
+                async with data_lock:
+                    data   = load_data()
+                    player = get_player(data, ctx.author)
 
-        if time.time() > data.get("loot_end_time", 0):
-            data["loot_active"] = False
-            save_data(data)
-            await ctx.send("⌛ The loot window just closed!")
-            return
+                    # Window active check
+                    if not data.get("loot_active"):
+                        await ctx.send(
+                            "🔒 No loot drop is active right now. "
+                            "Watch for `!startloot` when the stream goes live!"
+                        )
+                        return
 
-        uid = str(ctx.author.id)
-        if uid in data.get("loot_claimers", []):
-            remaining = int(data["loot_end_time"] - time.time())
-            await ctx.send(
-                f"✋ {ctx.author.mention} You already claimed your loot this session! "
-                f"Window closes in {fmt_time(remaining)}."
-            )
-            return
+                    # Window expired check
+                    if time.time() > data.get("loot_end_time", 0):
+                        data["loot_active"] = False
+                        save_data(data)
+                        await ctx.send("⌛ The loot window just closed!")
+                        return
 
-        # Must be in a guild to claim
-        if player["guild"] is None:
-            await ctx.send(
-                f"⚠️ {ctx.author.mention} Join a guild first with `!join` to claim loot!"
-            )
-            return
+                    # One claim per user per event — checked INSIDE the lock
+                    uid = str(ctx.author.id)
+                    if uid in data.get("loot_claimers", []):
+                        remaining = int(data["loot_end_time"] - time.time())
+                        await ctx.send(
+                            f"✋ {ctx.author.mention} You already claimed your loot this session! "
+                            f"Window closes in {fmt_time(remaining)}."
+                        )
+                        return
 
-        # Roll and give loot
-        drops = roll_loot(player)
-        for item_id, qty in drops:
-            add_item(player, item_id, qty)
+                    # Must be in a guild
+                    if player["guild"] is None:
+                        await ctx.send(
+                            f"⚠️ {ctx.author.mention} Join a guild first with `!join` to claim loot!"
+                        )
+                        return
 
-        # Gold reward
-        gold_gained = round(random.uniform(*GOLD_LOOT_REWARD), 1)
-        add_gold(player, gold_gained)
+                    # Roll and give loot — all inside lock
+                    drops = roll_loot(player)
+                    for item_id, qty in drops:
+                        add_item(player, item_id, qty)
 
-        data.setdefault("loot_claimers", []).append(uid)
-        player["stats"]["total_loots"] += 1
-        levelled = add_xp(player, XP_PER_LOOT, XP_PER_LEVEL)
-        save_data(data)
+                    gold_gained = round(random.uniform(*GOLD_LOOT_REWARD), 1)
+                    add_gold(player, gold_gained)
 
-        # Format response
-        guild_cfg = GUILDS.get(player["guild"], {})
-        drop_lines = []
-        for item_id, qty in drops:
-            item = ITEMS.get(item_id, {"name": item_id, "emoji": "❓"})
-            drop_lines.append(f"{item['emoji']} **{item['name']}** x{qty}")
+                    # Mark as claimed BEFORE saving
+                    data.setdefault("loot_claimers", []).append(uid)
+                    player["stats"]["total_loots"] += 1
+                    levelled = add_xp(player, XP_PER_LOOT, XP_PER_LEVEL)
+                    save_data(data)
 
-        msg = (
-            f"🎁 {guild_cfg.get('emoji','')} **{ctx.author.display_name}** ({player['class']}) "
-            f"claimed their loot:\n" + "\n".join(drop_lines) +
-            f"\n💰 +**{gold_gained} gold** (total: {player['gold']})"
-        )
-        if levelled:
-            msg += f"\n⬆️ **LEVEL UP! Now level {player['level']}!**"
+                # Build response outside lock
+                guild_cfg  = GUILDS.get(player["guild"], {})
+                drop_lines = []
+                for item_id, qty in drops:
+                    item = ITEMS.get(item_id, {"name": item_id, "emoji": "❓"})
+                    drop_lines.append(f"{item['emoji']} **{item['name']}** x{qty}")
 
-        await ctx.send(msg)
+                msg = (
+                    f"🎁 {guild_cfg.get('emoji','')} **{ctx.author.display_name}** "
+                    f"({player['class']}) claimed their loot:\n"
+                    + "\n".join(drop_lines)
+                    + f"\n💰 +**{gold_gained}g** (total: {fmt_gold(player['gold'])}g)"
+                )
+                if levelled:
+                    msg += f"\n⬆️ **LEVEL UP! Now level {player['level']}!**"
+
+                await ctx.send(msg)
+
+        except Exception as e:
+            await ctx.send(f"❌ Error: {e}")
 
 
 async def setup(bot):

@@ -129,17 +129,29 @@ class GatherCog(commands.Cog):
                             special_msg = f"\n🎲 **CHAOS ROLL! {chaos_mult}x resources!**"
 
                     elif player["class"] == "Cultist":
-                        # Ritual: chance to find rare item
+                        # Ritual: chance to find a random resource from ANY guild
                         ritual_chance = 0.25 if "ritual_boost" in effects else 0.15
                         if random.random() < ritual_chance:
-                            ritual_pool = ["trick_coin", "bone_brew", "sequin_charm"]
+                            # Build pool of all resources from all guilds
+                            all_resources = []
+                            for g_cfg in GUILDS.values():
+                                all_resources.extend(g_cfg.get("resources", []))
+                            # Remove duplicates
+                            all_resources = list(set(all_resources))
+
+                            # Pick a random resource and quantity
+                            ritual_resource = random.choice(all_resources)
+                            mn, mx = BASE_GATHER.get(ritual_resource, (1, 3))
+                            ritual_qty = random.randint(mn, mx)
+
+                            # Bonus: if ritual_cursed upgrade, get slightly more
                             if "ritual_cursed" in effects:
-                                ritual_pool += ["cursed_relic", "soul_shard"]
-                            ritual_item = random.choice(ritual_pool)
-                            add_item(player, ritual_item, 1)
-                            item_name   = ITEMS.get(ritual_item, {}).get("name", ritual_item)
-                            item_emoji  = ITEMS.get(ritual_item, {}).get("emoji", "✨")
-                            special_msg = f"\n🕯️ **RITUAL!** You found {item_emoji} {item_name}!"
+                                ritual_qty = int(ritual_qty * 1.5) + 1
+
+                            add_item(player, ritual_resource, ritual_qty)
+                            r_name  = ITEMS.get(ritual_resource, {}).get("name", ritual_resource)
+                            r_emoji = ITEMS.get(ritual_resource, {}).get("emoji", "✨")
+                            special_msg = f"\n🕯️ **RITUAL!** Dark forces grant you {ritual_qty}x {r_emoji} {r_name}!"
 
                     elif player["class"] == "Executioner":
                         # Precision: max roll on one (or both with upgrade) resource

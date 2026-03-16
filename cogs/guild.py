@@ -241,7 +241,7 @@ class GuildCog(commands.Cog):
     # ── !guilds ───────────────────────────────────────────────────────────────
     @commands.command(name="guilds")
     async def guilds_overview(self, ctx):
-        """Show all guilds and their upgrade tiers."""
+        """Show all guilds, their resources and special powers."""
         try:
             data = load_data()
             save_data(data)
@@ -253,14 +253,90 @@ class GuildCog(commands.Cog):
                 max_tier    = len(GUILD_UPGRADES.get(key, []))
                 tier_str    = f"Tier {tier}/{max_tier}" if max_tier > 0 else "No upgrades"
                 resources   = " ".join(
-                    ITEMS.get(r, {}).get("emoji", "❓")
+                    f"{ITEMS.get(r, {}).get('emoji', '❓')} {ITEMS.get(r, {}).get('name', r)}"
                     for r in g.get("resources", [])
                 )
                 lines.append(
-                    f"{g['emoji']} **{g['display_name']}** ({g['class_name']}) "
-                    f"— {tier_str} — {resources}\n"
-                    f"   *{g['description']}*\n"
+                    f"{g['emoji']} **{g['display_name']}** — *{g['class_name']}* — {tier_str}\n"
+                    f"   Resources: {resources}\n"
+                    f"   ✨ *{g['special']}*\n"
                 )
+
+            lines.append("Use `!upgrades <guild>` to see upgrade costs.")
+            await ctx.send("\n".join(lines))
+
+        except Exception as e:
+            await ctx.send(f"❌ Error: {e}")
+
+    # ── !upgrades ─────────────────────────────────────────────────────────────
+    @commands.command(name="upgrades")
+    async def upgrades(self, ctx, *, guild_name: str = None):
+        """Show upgrade tiers and costs for a guild. Usage: !upgrades horny jail"""
+        try:
+            if guild_name is None:
+                # Show all guilds as a menu
+                lines = ["**🔨 Guild Upgrades — type `!upgrades <guild name>` for details:**\n"]
+                for key, g in GUILDS.items():
+                    max_tier = len(GUILD_UPGRADES.get(key, []))
+                    lines.append(f"{g['emoji']} **{g['display_name']}** — {max_tier} upgrade tiers")
+                await ctx.send("\n".join(lines))
+                return
+
+            # Match guild
+            matched_key = None
+            for key, g in GUILDS.items():
+                if guild_name.lower() in [key.lower(), g["display_name"].lower()]:
+                    matched_key = key
+                    break
+
+            if matched_key is None:
+                await ctx.send(f"❌ Guild `{guild_name}` not found. Type `!upgrades` to see the list.")
+                return
+
+            data        = load_data()
+            g           = GUILDS[matched_key]
+            guild_state = get_guild_data(data, matched_key)
+            upgrades    = GUILD_UPGRADES.get(matched_key, [])
+            current_tier = guild_state["upgrade_tier"]
+            save_data(data)
+
+            if not upgrades:
+                await ctx.send(f"**{g['display_name']}** has no upgrades yet.")
+                return
+
+            lines = [f"**{g['emoji']} {g['display_name']} — Upgrade Tree**\n"]
+            for i, upgrade in enumerate(upgrades):
+                tier_num = i + 1
+                if i < current_tier:
+                    status = "✅ Unlocked"
+                elif i == current_tier:
+                    status = "🔨 **In progress**"
+                else:
+                    status = "🔒 Locked"
+
+                cost_str = "  ".join(
+                    f"{ITEMS.get(k, {}).get('emoji', '❓')} {qty}x {ITEMS.get(k, {}).get('name', k)}"
+                    for k, qty in upgrade["cost"].items()
+                )
+                lines.append(
+                    f"**Tier {tier_num} — {upgrade['name']}** {status}\n"
+                    f"   *{upgrade['description']}*\n"
+                    f"   Cost: {cost_str}\n"
+                )
+
+                # Show pool progress if this is the current tier
+                if i == current_tier:
+                    pool = guild_state["pool"]
+                    lines.append("   **Progress:**")
+                    for item_id, qty_needed in upgrade["cost"].items():
+                        item     = ITEMS.get(item_id, {"name": item_id, "emoji": "❓"})
+                        donated  = pool.get(item_id, 0)
+                        bar_fill = int((donated / qty_needed) * 10)
+                        bar      = "█" * bar_fill + "░" * (10 - bar_fill)
+                        lines.append(
+                            f"   {item['emoji']} {item['name']}: `{bar}` {donated}/{qty_needed}"
+                        )
+                    lines.append("")
 
             await ctx.send("\n".join(lines))
 
