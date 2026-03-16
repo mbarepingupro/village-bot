@@ -31,6 +31,17 @@ class EconomyCog(commands.Cog):
             f"Earn more by selling resources (`!sell`) or claiming loot drops (`!loot`)."
         )
 
+    # ── !prices ───────────────────────────────────────────────────────────────
+    @commands.command(name="prices")
+    async def prices(self, ctx):
+        """Show current resource sell prices."""
+        lines = ["**💱 Resource Sell Prices**\n",
+                 "*Bank buyback prices coming soon — use `!sell <item> <qty>` to sell*\n"]
+        for item_id, price in SELL_PRICES.items():
+            item = ITEMS.get(item_id, {"name": item_id, "emoji": "❓"})
+            lines.append(f"{item['emoji']} **{item['name']}** — {price}g each")
+        await ctx.send("\n".join(lines))
+
     # ── !sell ─────────────────────────────────────────────────────────────────
     @commands.command(name="sell")
     async def sell(self, ctx, item_name: str = None, qty: int = None):
