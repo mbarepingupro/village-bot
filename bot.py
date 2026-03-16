@@ -21,6 +21,7 @@ COGS = [
     "cogs.economy",    # !gold, !sell, !shop, !buy, !equip
     "cogs.loot",       # !startloot, !loot
     "cogs.items",      # !use
+    "cogs.trade",     # !trade, !accept, !decline
     "cogs.help",       # !help
 ]
 
