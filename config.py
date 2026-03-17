@@ -21,6 +21,7 @@ BOT_CHANNEL_NAME = ""   # set to your channel name to restrict commands
 GO_LIVE_CHANNEL  = "🔴-live-now"           # Streamcord go-live channel
 GO_LIVE_TRIGGER  = "twitch.tv/mbarepingu"   # string to match in the message
 VILLAGE_CHANNEL  = "🛖🧊-penguin-village"    # village bot channel
+TRADE_CHANNEL    = "🤝-village-trade"          # dedicated trade channel
 
 # Roles allowed to run mod commands (!startloot, !addgold, etc.)
 MOD_ROLE_NAMES = ["Moderator", "Mod", "streamer"]
@@ -432,6 +433,14 @@ ITEMS = {
         "name": "Stream Command Slot", "emoji": "📺",
         "type": "stream_unlock",
         "description": "Unlocks a custom stream command. Activate with the streamer.",
+        "tradeable": False,
+    },
+
+    # ── Limited edition cosmetics ──────────────────────────────────────────────
+    "penguin_helmet": {
+        "name": "Penguin Helmet", "emoji": "🐧",
+        "type": "cosmetic", "slot": "hat",
+        "description": "Awarded to the first penguins of the village. Rare.",
         "tradeable": False,
     },
 

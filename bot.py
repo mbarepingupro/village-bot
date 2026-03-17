@@ -2,6 +2,11 @@
 mbarepingu Village Bot — bot.py
 ================================
 Entry point. Loads config and all feature modules (cogs).
+
+Channel behaviour:
+  - Public commands (answer in channel): !gather, !join, !loot, !contribute, !trade, !accept, !decline
+  - DM commands (answer via DM): everything else
+  - Trade commands: trade channel only
 """
 
 import asyncio
@@ -10,23 +15,31 @@ import discord
 from discord.ext import commands
 from config import (
     BOT_TOKEN, COMMAND_PREFIX, BOT_CHANNEL_NAME,
-    GO_LIVE_CHANNEL, GO_LIVE_TRIGGER, VILLAGE_CHANNEL, LOOT_WINDOW_SECONDS
+    GO_LIVE_CHANNEL, GO_LIVE_TRIGGER, VILLAGE_CHANNEL,
+    TRADE_CHANNEL, LOOT_WINDOW_SECONDS
 )
 
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix=COMMAND_PREFIX, intents=intents, help_command=None)
 
+# Commands that respond publicly in the village channel
+PUBLIC_COMMANDS = {
+    "gather", "join", "loot", "contribute", "donate",
+    "trade", "accept", "decline", "canceltrade", "tradeoffer", "offers",
+    "startloot", "endloot", "addgold"  # mod commands stay public
+}
+
 COGS = [
-    "cogs.data",       # shared save/load layer
-    "cogs.guild",      # guild contributions and upgrades
-    "cogs.character",  # !join, !character, !inventory
-    "cogs.gather",     # !gather, !craft
-    "cogs.economy",    # !gold, !sell, !shop, !buy, !equip, !prices
-    "cogs.loot",       # !startloot, !loot
-    "cogs.items",      # !use
-    "cogs.trade",      # !trade, !accept, !decline
-    "cogs.help",       # !help
+    "cogs.data",
+    "cogs.guild",
+    "cogs.character",
+    "cogs.gather",
+    "cogs.economy",
+    "cogs.loot",
+    "cogs.items",
+    "cogs.trade",
+    "cogs.help",
 ]
 
 @bot.event
@@ -34,15 +47,57 @@ async def on_ready():
     print(f"✅  {bot.user} is online!")
 
 @bot.check
-async def only_in_bot_channel(ctx):
-    if BOT_CHANNEL_NAME and ctx.channel.name != BOT_CHANNEL_NAME:
+async def channel_and_dm_routing(ctx):
+    """
+    Route commands:
+    - Trade commands only work in the trade channel
+    - Public commands work in the village channel
+    - All other commands get a DM response
+    - Block everything outside village/trade channels
+    """
+    channel_name = ctx.channel.name if hasattr(ctx.channel, 'name') else ""
+    command_name = ctx.command.name if ctx.command else ""
+
+    # Trade commands — only in trade channel
+    if command_name in {"trade", "accept", "decline", "canceltrade", "tradeoffer", "offers"}:
+        if channel_name != TRADE_CHANNEL:
+            trade_ch = discord.utils.get(ctx.guild.text_channels, name=TRADE_CHANNEL)
+            if trade_ch:
+                await ctx.send(f"🤝 Trades happen in {trade_ch.mention}!")
+            return False
+        return True
+
+    # If it's a DM, allow it
+    if isinstance(ctx.channel, discord.DMChannel):
+        return True
+
+    # Only respond in the village channel
+    if BOT_CHANNEL_NAME and channel_name != BOT_CHANNEL_NAME:
         return False
+
+    # DM-only commands — send DM and post a small notice
+    if command_name and command_name not in PUBLIC_COMMANDS:
+        try:
+            # Re-invoke command in DM context by sending DM
+            dm = await ctx.author.create_dm()
+            # Post brief notice in channel (delete after 5 seconds)
+            notice = await ctx.send(f"📬 {ctx.author.mention} check your DMs!")
+            await asyncio.sleep(5)
+            await notice.delete()
+            # Send actual response via DM by processing command there
+            await ctx.author.send(f"You used `{ctx.message.content}` — here's your response:")
+        except discord.Forbidden:
+            await ctx.send(f"📬 {ctx.author.mention} please enable DMs so I can respond privately!")
+            return False
+        # Still process the command but redirect output to DM
+        ctx.channel = await ctx.author.create_dm()
+        return True
+
     return True
 
 @bot.event
 async def on_message(message):
     # ── Auto-loot trigger ─────────────────────────────────────────────────────
-    # Fires when Streamcord posts in the go-live channel.
     if (
         message.author != bot.user and
         message.channel.name == GO_LIVE_CHANNEL and
@@ -59,9 +114,10 @@ async def on_message(message):
 
             mins = LOOT_WINDOW_SECONDS // 60
 
-            # Short confirmation in go-live channel
+            # Short note in go-live channel
             await message.channel.send(
-                f"🎁 Loot drop activated! Head to <#{message.guild.get_channel_named(VILLAGE_CHANNEL).id if message.guild.get_channel_named(VILLAGE_CHANNEL) else VILLAGE_CHANNEL}> "
+                f"🎁 Loot drop activated! Head to "
+                f"{discord.utils.get(message.guild.text_channels, name=VILLAGE_CHANNEL).mention} "
                 f"and type `!loot` to claim your rewards!"
             )
 
@@ -77,7 +133,6 @@ async def on_message(message):
 
             print(f"✅ Auto-loot triggered by Streamcord notification.")
 
-    # Required so commands still work alongside on_message
     await bot.process_commands(message)
 
 async def main():
