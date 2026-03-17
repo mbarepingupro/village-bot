@@ -315,17 +315,19 @@ class GuildCog(commands.Cog):
         """Show upgrade tiers and costs for a guild. Usage: !upgrades horny jail"""
         try:
             if guild_name is None:
-                # Show all guilds with their upgrade names and descriptions
-                lines = ["**🔨 Guild Upgrades — type `!upgrades <guild name>` for full costs:**\n"]
+                # Show all guilds with full upgrade detail — split into multiple messages if needed
+                data = load_data()
+                messages = []
+
                 for key, g in GUILDS.items():
                     upgrades_list = GUILD_UPGRADES.get(key, [])
                     max_tier      = len(upgrades_list)
-                    data          = load_data()
                     guild_state   = get_guild_data(data, key)
                     current_tier  = guild_state["upgrade_tier"]
-                    save_data(data)
+                    pool          = guild_state["pool"]
 
-                    lines.append(f"{g['emoji']} **{g['display_name']}** — Tier {current_tier}/{max_tier}")
+                    lines = [f"{g['emoji']} **{g['display_name']}** — Tier {current_tier}/{max_tier}\n"]
+
                     for i, upgrade in enumerate(upgrades_list):
                         if i < current_tier:
                             status = "✅"
@@ -333,11 +335,33 @@ class GuildCog(commands.Cog):
                             status = "🔨"
                         else:
                             status = "🔒"
-                        lines.append(f"   {status} Tier {i+1}: **{upgrade['name']}** — *{upgrade['description']}*")
-                    lines.append("")
 
-                lines.append("Use `!upgrades <guild name>` to see costs and progress.")
-                await ctx.send("\n".join(lines))
+                        cost_str = "  ".join(
+                            f"{ITEMS.get(k, {}).get('emoji', '❓')} {qty}x {ITEMS.get(k, {}).get('name', k)}"
+                            for k, qty in upgrade["cost"].items()
+                        )
+                        lines.append(f"   {status} **Tier {i+1}: {upgrade['name']}**")
+                        lines.append(f"   *{upgrade['description']}*")
+                        lines.append(f"   Cost: {cost_str}")
+
+                        # Show progress bar for current tier
+                        if i == current_tier:
+                            for item_id, qty_needed in upgrade["cost"].items():
+                                item     = ITEMS.get(item_id, {"name": item_id, "emoji": "❓"})
+                                donated  = pool.get(item_id, 0)
+                                bar_fill = int((donated / qty_needed) * 10)
+                                bar      = "█" * bar_fill + "░" * (10 - bar_fill)
+                                lines.append(f"   {item['emoji']} `{bar}` {donated}/{qty_needed}")
+                        lines.append("")
+
+                    messages.append("\n".join(lines))
+
+                save_data(data)
+
+                # Send each guild as a separate message to avoid Discord 2000 char limit
+                await ctx.send("**🔨 Guild Upgrade Board**\n")
+                for msg in messages:
+                    await ctx.send(msg)
                 return
 
             # Match guild
