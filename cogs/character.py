@@ -129,19 +129,39 @@ class CharacterCog(commands.Cog):
     # ── !character ────────────────────────────────────────────────────────────
     @commands.command(name="character", aliases=["profile", "stats", "mychar"])
     async def character(self, ctx, member: discord.Member = None):
-        """Show your character card. Usage: !character or !character @user"""
+        """Show your character. Usage: !character or !character @user"""
         try:
             target = member or ctx.author
             data   = load_data()
             player = get_player(data, target)
             save_data(data)
 
-            # ── Image ──────────────────────────────────────────────────────
-            from cogs.avatar import build_character_card
-            buf = build_character_card(player, target.display_name)
+            # ── Build penguin image with cosmetic layers ────────────────────
+            import io, os
+            from PIL import Image
+
+            base_dir    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            base_path   = os.path.join(base_dir, "assets", "base_penguin.png")
+            cos_dir     = os.path.join(base_dir, "assets", "cosmetics")
+
+            img = Image.open(base_path).convert("RGBA")
+
+            for slot in ["outfit", "hat", "accessory"]:
+                item_id = player.get("cosmetics", {}).get(slot)
+                if not item_id:
+                    continue
+                layer_path = os.path.join(cos_dir, f"{item_id}.png")
+                if os.path.exists(layer_path):
+                    layer = Image.open(layer_path).convert("RGBA")
+                    layer = layer.resize(img.size, Image.NEAREST)
+                    img.paste(layer, (0, 0), layer)
+
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            buf.seek(0)
             await ctx.send(file=discord.File(buf, filename="character.png"))
 
-            # ── Text block ─────────────────────────────────────────────────
+            # ── Text stats ─────────────────────────────────────────────────
             guild_info = "None — use `!join` to pick one"
             if player["guild"] and player["guild"] in GUILDS:
                 g          = GUILDS[player["guild"]]
@@ -155,9 +175,9 @@ class CharacterCog(commands.Cog):
             tool_str = ITEMS[tool_id]["name"] if tool_id and tool_id in ITEMS else "None"
 
             cosmetics = player.get("cosmetics", {})
-            cosmetic_lines = "\n".join(
-                f"{ITEMS.get(item_id, {}).get('emoji', '✨')} {ITEMS.get(item_id, {}).get('name', item_id)} [{slot}]"
-                for slot, item_id in cosmetics.items()
+            cosmetic_lines = "  ".join(
+                f"{ITEMS.get(item_id, {}).get('emoji', '✨')} {ITEMS.get(item_id, {}).get('name', item_id)}"
+                for item_id in cosmetics.values()
             ) if cosmetics else "None"
 
             await ctx.send(
