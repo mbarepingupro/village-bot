@@ -126,14 +126,47 @@ class GuildCog(commands.Cog):
 
     # ── !contribute ───────────────────────────────────────────────────────────
     @commands.command(name="contribute", aliases=["donate"])
-    async def contribute(self, ctx, item_name: str = None, qty: int = None):
-        """Donate resources to your guild's upgrade pool. Usage: !contribute fish 10"""
+    async def contribute(self, ctx, item_name: str = None, qty: int = None, *, guild_name: str = None):
+        """
+        Donate resources to any guild's upgrade pool.
+        Usage:
+          !contribute                         → see all guilds and what they need
+          !contribute fish 10                 → donate to YOUR guild
+          !contribute fish 10 sea lion pit    → donate to a specific guild
+        """
         try:
             if item_name is None:
-                await ctx.send(
-                    "Usage: `!contribute <resource> <qty>`\n"
-                    "Check what your guild needs with `!guildstatus`."
-                )
+                # Show all guilds and what they currently need
+                data  = load_data()
+                lines = ["**🔨 Guild Upgrade Needs — what each guild is working toward:**\n"]
+                any_in_progress = False
+
+                for key, g in GUILDS.items():
+                    guild_state  = get_guild_data(data, key)
+                    tier         = guild_state["upgrade_tier"]
+                    upgrades     = GUILD_UPGRADES.get(key, [])
+
+                    if tier >= len(upgrades):
+                        lines.append(f"{g['emoji']} **{g['display_name']}** — 🏆 Max tier reached!")
+                        continue
+
+                    any_in_progress = True
+                    next_up  = upgrades[tier]
+                    pool     = guild_state["pool"]
+                    cost_str = "  ".join(
+                        f"{ITEMS.get(k, {}).get('emoji', '❓')} {pool.get(k, 0)}/{v} {ITEMS.get(k, {}).get('name', k)}"
+                        for k, v in next_up["cost"].items()
+                    )
+                    lines.append(
+                        f"{g['emoji']} **{g['display_name']}** — Tier {tier+1}: *{next_up['name']}*\n"
+                        f"   Needs: {cost_str}"
+                    )
+
+                save_data(data)
+                if any_in_progress:
+                    lines.append("\nUse `!contribute <resource> <qty>` to donate to your guild")
+                    lines.append("or `!contribute <resource> <qty> <guild name>` for any guild.")
+                await ctx.send("\n".join(lines))
                 return
 
             if user_lock(ctx.author.id, "contribute").locked():
@@ -148,16 +181,24 @@ class GuildCog(commands.Cog):
                         await ctx.send("⚠️ Join a guild first with `!join`.")
                         return
 
-                    guild_key   = player["guild"]
+                    # Determine target guild — player's own or specified
+                    guild_key = player["guild"]
+                    if guild_name:
+                        for key, g_cfg in GUILDS.items():
+                            if guild_name.lower() in [key.lower(), g_cfg["display_name"].lower()]:
+                                guild_key = key
+                                break
+                        else:
+                            await ctx.send(f"❌ Guild `{guild_name}` not found.")
+                            return
+
                     g           = GUILDS[guild_key]
                     guild_state = get_guild_data(data, guild_key)
                     upgrades    = GUILD_UPGRADES.get(guild_key, [])
                     tier        = guild_state["upgrade_tier"]
 
                     if tier >= len(upgrades):
-                        await ctx.send(
-                            f"🏆 **{g['display_name']}** is already at max tier!"
-                        )
+                        await ctx.send(f"🏆 **{g['display_name']}** is already at max tier!")
                         return
 
                     # Match item

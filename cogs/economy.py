@@ -293,9 +293,45 @@ class EconomyCog(commands.Cog):
                 add_gold(player, amount)
                 save_data(data)
             await ctx.send(
-                f"💰 Added **{amount} gold** to {ctx.author.display_name}. "
+                f"💰 Added **{amount}g** to {ctx.author.display_name}. "
                 f"Balance: **{fmt_gold(player['gold'])}g**"
             )
+        except Exception as e:
+            await ctx.send(f"❌ Error: {e}")
+
+    # ── !giveitem ─────────────────────────────────────────────────────────────
+    @commands.command(name="giveitem")
+    async def giveitem(self, ctx, target: discord.Member = None, *, item_name: str = None):
+        """[MOD] Give any item to a player. Usage: !giveitem @user penguin helmet"""
+        try:
+            if not is_super(ctx):
+                return
+            if target is None or item_name is None:
+                await ctx.send("Usage: `!giveitem @user <item name>`")
+                return
+
+            # Match item
+            matched_id = None
+            for item_id, item_def in ITEMS.items():
+                if item_name.lower() in [item_id.lower(), item_def["name"].lower()]:
+                    matched_id = item_id
+                    break
+
+            if matched_id is None:
+                await ctx.send(f"❌ Item `{item_name}` not found.")
+                return
+
+            async with data_lock:
+                data   = load_data()
+                player = get_player(data, target)
+                add_item(player, matched_id, 1)
+                save_data(data)
+
+            item_def = ITEMS[matched_id]
+            await ctx.send(
+                f"🎁 Gave **{item_def['emoji']} {item_def['name']}** to **{target.display_name}**!"
+            )
+
         except Exception as e:
             await ctx.send(f"❌ Error: {e}")
 
