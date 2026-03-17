@@ -129,34 +129,16 @@ class CharacterCog(commands.Cog):
     # ── !character ────────────────────────────────────────────────────────────
     @commands.command(name="character", aliases=["profile", "stats", "mychar"])
     async def character(self, ctx, member: discord.Member = None):
-        """Show your character sheet. Usage: !character or !character @user"""
+        """Show your character card. Usage: !character or !character @user"""
         try:
             target = member or ctx.author
             data   = load_data()
             player = get_player(data, target)
-
-            guild_info = "None — use `!join` to pick one"
-            if player["guild"] and player["guild"] in GUILDS:
-                g          = GUILDS[player["guild"]]
-                guild_info = f"{g['emoji']} {g['display_name']} ({player['class']})"
-
-            xp_needed    = player["level"] * XP_PER_LEVEL
-            xp_bar_filled = int((player["xp"] / xp_needed) * 10)
-            xp_bar       = "█" * xp_bar_filled + "░" * (10 - xp_bar_filled)
-
-            tool_id  = player.get("equipped_tool")
-            tool_str = ITEMS[tool_id]["name"] if tool_id and tool_id in ITEMS else "None"
-
-            await ctx.send(
-                f"📋 **{target.display_name}**\n"
-                f"Guild: {guild_info}\n"
-                f"Level {player['level']} — `{xp_bar}` {player['xp']}/{xp_needed} XP\n"
-                f"💰 Gold: {fmt_gold(player['gold'])}g\n"
-                f"🔨 Gathers: {player['stats']['total_gathers']} | "
-                f"🎁 Loots: {player['stats']['total_loots']}\n"
-                f"⚒️ Tool: {tool_str}"
-            )
             save_data(data)
+
+            from cogs.avatar import build_character_card
+            buf = build_character_card(player, target.display_name)
+            await ctx.send(file=discord.File(buf, filename="character.png"))
 
         except Exception as e:
             await ctx.send(f"❌ Error: {e}")
