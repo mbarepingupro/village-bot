@@ -1,12 +1,11 @@
 """
 mbarepingu Village Bot — bot.py
 ================================
-Entry point. Loads config and all feature modules (cogs).
-
 Channel behaviour:
-  - Public commands (answer in channel): !gather, !join, !loot, !contribute, !trade, !accept, !decline
-  - DM commands (answer via DM): everything else
-  - Trade commands: trade channel only
+  - DMs: all commands always work
+  - Village channel: public commands respond there, others send DM + brief notice
+  - Trade channel: trade commands only
+  - Other channels: ignored
 """
 
 import asyncio
@@ -26,8 +25,12 @@ bot = commands.Bot(command_prefix=COMMAND_PREFIX, intents=intents, help_command=
 # Commands that respond publicly in the village channel
 PUBLIC_COMMANDS = {
     "gather", "join", "loot", "contribute", "donate",
-    "trade", "accept", "decline", "canceltrade", "tradeoffer", "offers",
-    "startloot", "endloot", "addgold"  # mod commands stay public
+    "startloot", "endloot", "addgold", "giveitem"
+}
+
+# Trade commands — only in trade channel
+TRADE_COMMANDS = {
+    "trade", "accept", "decline", "canceltrade", "tradeoffer", "offers"
 }
 
 COGS = [
@@ -47,56 +50,73 @@ async def on_ready():
     print(f"✅  {bot.user} is online!")
 
 @bot.check
-async def channel_and_dm_routing(ctx):
-    """
-    Route commands:
-    - DMs: always allowed
-    - Trade commands: only in trade channel
-    - Public commands: respond in village channel
-    - Everything else: respond via DM
-    """
-    channel_name = ctx.channel.name if hasattr(ctx.channel, 'name') else ""
+async def routing(ctx):
     command_name = ctx.command.name if ctx.command else ""
+    is_dm        = isinstance(ctx.channel, discord.DMChannel)
+    channel_name = getattr(ctx.channel, 'name', '')
 
-    # Always allow DMs
-    if isinstance(ctx.channel, discord.DMChannel):
+    # ── DMs: always allow everything ─────────────────────────────────────────
+    if is_dm:
         return True
 
-    # Trade commands — only in trade channel
-    if command_name in {"trade", "accept", "decline", "canceltrade", "tradeoffer", "offers"}:
-        if channel_name != TRADE_CHANNEL:
-            trade_ch = discord.utils.get(ctx.guild.text_channels, name=TRADE_CHANNEL)
-            if trade_ch:
-                await ctx.send(f"🤝 Trades happen in {trade_ch.mention}!")
-            return False
-        return True
+    # ── Trade commands: only in trade channel ────────────────────────────────
+    if command_name in TRADE_COMMANDS:
+        if channel_name == TRADE_CHANNEL:
+            return True
+        trade_ch = discord.utils.get(ctx.guild.text_channels, name=TRADE_CHANNEL)
+        if trade_ch:
+            await ctx.send(f"🤝 Trades happen in {trade_ch.mention}!")
+        return False
 
-    # Only respond in the village channel for server messages
+    # ── Outside village channel: ignore ──────────────────────────────────────
     if BOT_CHANNEL_NAME and channel_name != BOT_CHANNEL_NAME:
         return False
 
-    # DM-only commands — send DM and post a small notice
-    if command_name and command_name not in PUBLIC_COMMANDS:
-        try:
-            notice = await ctx.send(f"📬 {ctx.author.mention} check your DMs!")
-            ctx.channel = await ctx.author.create_dm()
+    # ── Inside village channel: public commands respond here ─────────────────
+    if command_name in PUBLIC_COMMANDS:
+        return True
+
+    # ── All other commands: DM the user, post brief notice in channel ─────────
+    try:
+        dm_channel = await ctx.author.create_dm()
+        # Temporarily swap channel so the command responds to DM
+        original_channel  = ctx.channel
+        ctx._state        = ctx._state  # keep state
+        # We can't truly swap ctx.channel cleanly, so instead we intercept
+        # by sending a notice and letting the command run — the command itself
+        # will send to ctx.channel which we override below
+        notice = await ctx.send(f"📬 {ctx.author.mention} check your DMs!")
+        # Override send on this ctx to go to DM instead
+        original_send      = ctx.send
+        async def dm_send(*args, **kwargs):
+            kwargs.pop('delete_after', None)
+            return await dm_channel.send(*args, **kwargs)
+        ctx.send = dm_send
+        # Schedule cleanup of notice
+        async def cleanup():
             await asyncio.sleep(5)
             try:
                 await notice.delete()
             except Exception:
                 pass
-        except discord.Forbidden:
-            await ctx.send(f"📬 {ctx.author.mention} please enable DMs so I can respond privately!")
-            return False
+        asyncio.create_task(cleanup())
+    except discord.Forbidden:
+        await ctx.send(f"📬 {ctx.author.mention} please enable DMs to receive bot responses!")
+        return False
 
     return True
 
 @bot.event
 async def on_message(message):
+    # Ignore DMs for auto-loot trigger
+    if isinstance(message.channel, discord.DMChannel):
+        await bot.process_commands(message)
+        return
+
     # ── Auto-loot trigger ─────────────────────────────────────────────────────
     if (
         message.author != bot.user and
-        message.channel.name == GO_LIVE_CHANNEL and
+        getattr(message.channel, 'name', '') == GO_LIVE_CHANNEL and
         GO_LIVE_TRIGGER.lower() in message.content.lower()
     ):
         from cogs.data import load_data, save_data
@@ -108,17 +128,15 @@ async def on_message(message):
             data["loot_claimers"] = []
             save_data(data)
 
-            mins = LOOT_WINDOW_SECONDS // 60
+            mins       = LOOT_WINDOW_SECONDS // 60
+            village_ch = discord.utils.get(message.guild.text_channels, name=VILLAGE_CHANNEL)
 
-            # Short note in go-live channel
             await message.channel.send(
                 f"🎁 Loot drop activated! Head to "
-                f"{discord.utils.get(message.guild.text_channels, name=VILLAGE_CHANNEL).mention} "
+                f"{village_ch.mention if village_ch else '#' + VILLAGE_CHANNEL} "
                 f"and type `!loot` to claim your rewards!"
             )
 
-            # Full announcement in village channel
-            village_ch = discord.utils.get(message.guild.text_channels, name=VILLAGE_CHANNEL)
             if village_ch:
                 await village_ch.send(
                     f"🔴 **mbarepingu is LIVE!**\n"
@@ -126,8 +144,7 @@ async def on_message(message):
                     f"Type `!loot` in the next **{mins} minutes** to claim your rewards!\n"
                     f"Higher level = better drops. Guild members get exclusive items!"
                 )
-
-            print(f"✅ Auto-loot triggered by Streamcord notification.")
+            print(f"✅ Auto-loot triggered.")
 
     await bot.process_commands(message)
 
