@@ -50,13 +50,17 @@ async def on_ready():
 async def channel_and_dm_routing(ctx):
     """
     Route commands:
-    - Trade commands only work in the trade channel
-    - Public commands work in the village channel
-    - All other commands get a DM response
-    - Block everything outside village/trade channels
+    - DMs: always allowed
+    - Trade commands: only in trade channel
+    - Public commands: respond in village channel
+    - Everything else: respond via DM
     """
     channel_name = ctx.channel.name if hasattr(ctx.channel, 'name') else ""
     command_name = ctx.command.name if ctx.command else ""
+
+    # Always allow DMs
+    if isinstance(ctx.channel, discord.DMChannel):
+        return True
 
     # Trade commands — only in trade channel
     if command_name in {"trade", "accept", "decline", "canceltrade", "tradeoffer", "offers"}:
@@ -67,31 +71,23 @@ async def channel_and_dm_routing(ctx):
             return False
         return True
 
-    # If it's a DM, allow it
-    if isinstance(ctx.channel, discord.DMChannel):
-        return True
-
-    # Only respond in the village channel
+    # Only respond in the village channel for server messages
     if BOT_CHANNEL_NAME and channel_name != BOT_CHANNEL_NAME:
         return False
 
     # DM-only commands — send DM and post a small notice
     if command_name and command_name not in PUBLIC_COMMANDS:
         try:
-            # Re-invoke command in DM context by sending DM
-            dm = await ctx.author.create_dm()
-            # Post brief notice in channel (delete after 5 seconds)
             notice = await ctx.send(f"📬 {ctx.author.mention} check your DMs!")
+            ctx.channel = await ctx.author.create_dm()
             await asyncio.sleep(5)
-            await notice.delete()
-            # Send actual response via DM by processing command there
-            await ctx.author.send(f"You used `{ctx.message.content}` — here's your response:")
+            try:
+                await notice.delete()
+            except Exception:
+                pass
         except discord.Forbidden:
             await ctx.send(f"📬 {ctx.author.mention} please enable DMs so I can respond privately!")
             return False
-        # Still process the command but redirect output to DM
-        ctx.channel = await ctx.author.create_dm()
-        return True
 
     return True
 
