@@ -542,7 +542,7 @@ class TradeCog(commands.Cog):
             wanting = fmt_side(listing["want_item"],  listing["want_qty"],  listing["want_type"]  == "gold")
             await ctx.send(
                 f"📋 **{ctx.author.display_name}** offers {giving} for {wanting}\n"
-                f"Claim with: `!buy {code}` *(listing expires in 24h)*"
+                f"Claim with: `!claim {code}` *(listing expires in 24h)*"
             )
 
         except Exception as e:
@@ -575,7 +575,7 @@ class TradeCog(commands.Cog):
                 hours = expires_in // 3600
                 lines.append(
                     f"`{code}` — **{listing['from_name']}** offers {giving} for {wanting} "
-                    f"*(expires in {hours}h)* — `!buy {code}`"
+                    f"*(expires in {hours}h)* — `!claim {code}`"
                 )
 
             await ctx.send("\n".join(lines))
@@ -583,17 +583,17 @@ class TradeCog(commands.Cog):
         except Exception as e:
             await ctx.send(f"❌ Error: {e}")
 
-    # ── !buy <code> ───────────────────────────────────────────────────────────
-    @commands.command(name="buy")
+    # ── !claim <code> ─────────────────────────────────────────────────────────
+    @commands.command(name="claim")
     async def buy_listing(self, ctx, code: str = None):
-        """Claim an open market listing. Usage: !buy A3K"""
+        """Claim an open market listing. Usage: !claim A3K"""
         try:
             if not self.in_trade_channel(ctx):
                 await self.send_trade_only(ctx)
                 return
 
             if code is None:
-                await ctx.send("Usage: `!buy <code>` — find codes with `!market`")
+                await ctx.send("Usage: `!claim <code>` — find codes with `!market`")
                 return
 
             code = code.upper()
