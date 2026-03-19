@@ -184,15 +184,15 @@ GUILD_UPGRADES = {
     "club_soda": [
         {
             "name":        "Herb Garden",
-            "description": "Craft cooldown reduced to 3 minutes.",
+            "description": "+30% to herb and alcohol yields on every gather.",
             "cost":        {"candy": 20, "confetti": 15},
-            "effect":      "craft_speed",
+            "effect":      "mixologist_gather_boost",
         },
         {
             "name":        "Secret Menu",
-            "description": "Mixologists can craft Bone Brew and Scrambled Armor.",
+            "description": "5% chance to craft double output with same ingredients.",
             "cost":        {"metal": 15, "blood_bean": 10},
-            "effect":      "secret_recipes",
+            "effect":      "double_craft_chance",
         },
     ],
     "the_circus": [
@@ -291,7 +291,7 @@ ITEMS = {
         "type": "resource", "description": "It gets everywhere.", "tradeable": True,
     },
     "meat": {
-        "name": "Polar Bear Meat", "emoji": "🥩",
+        "name": "Meat", "emoji": "🥩",
         "type": "resource", "description": "Tough but nutritious.", "tradeable": True,
     },
     "fur": {
@@ -533,31 +533,33 @@ SELL_PRICES = {
 
 # ── Shop ───────────────────────────────────────────────────────────────────────
 SHOP = {
-    "iron_axe":         {"price": 30,  "guild_only": None},
-    "fishing_rod":      {"price": 30,  "guild_only": None},
-    "pickaxe":          {"price": 30,  "guild_only": None},
-    "jester_hat":       {"price": 50,  "guild_only": "the_circus"},
-    "inmate_outfit":    {"price": 50,  "guild_only": "horny_jail"},
-    "sea_lion_hood":    {"price": 50,  "guild_only": "sea_lion_pit"},
-    "soldier_helmet":   {"price": 50,  "guild_only": "the_barracks"},
-    "cultist_robe":     {"price": 50,  "guild_only": "cursed_temple"},
-    "executioner_hood": {"price": 50,  "guild_only": "the_guillotine"},
-    # ── Tools (all resources) ─────────────────────────────────────────────────
-    "egg_basket":       {"price": 30, "guild_only": None},
-    "bone_saw":         {"price": 30, "guild_only": None},
-    "herb_pouch":       {"price": 30, "guild_only": None},
-    "flask":            {"price": 30, "guild_only": None},
-    "candy_bag":        {"price": 30, "guild_only": None},
-    "confetti_cannon":  {"price": 30, "guild_only": None},
-    "hunting_knife":    {"price": 30, "guild_only": None},
-    "fur_trap":         {"price": 30, "guild_only": None},
-    "candle_mold":      {"price": 30, "guild_only": None},
-    "soul_jar":         {"price": 30, "guild_only": None},
-    "blood_vial":       {"price": 30, "guild_only": None},
+    # ── Tools — level 2 required ──────────────────────────────────────────────
+    "iron_axe":         {"price": 30, "guild_only": None, "min_level": 2},
+    "fishing_rod":      {"price": 30, "guild_only": None, "min_level": 2},
+    "pickaxe":          {"price": 30, "guild_only": None, "min_level": 2},
+    "egg_basket":       {"price": 30, "guild_only": None, "min_level": 2},
+    "bone_saw":         {"price": 30, "guild_only": None, "min_level": 2},
+    "herb_pouch":       {"price": 30, "guild_only": None, "min_level": 2},
+    "flask":            {"price": 30, "guild_only": None, "min_level": 2},
+    "candy_bag":        {"price": 30, "guild_only": None, "min_level": 2},
+    "confetti_cannon":  {"price": 30, "guild_only": None, "min_level": 2},
+    "hunting_knife":    {"price": 30, "guild_only": None, "min_level": 2},
+    "fur_trap":         {"price": 30, "guild_only": None, "min_level": 2},
+    "candle_mold":      {"price": 30, "guild_only": None, "min_level": 2},
+    "soul_jar":         {"price": 30, "guild_only": None, "min_level": 2},
+    "blood_vial":       {"price": 30, "guild_only": None, "min_level": 2},
+    # ── Cosmetics — level 5 required ──────────────────────────────────────────
+    "jester_hat":       {"price": 50, "guild_only": "the_circus",     "min_level": 5},
+    "inmate_outfit":    {"price": 50, "guild_only": "horny_jail",     "min_level": 5},
+    "sea_lion_hood":    {"price": 50, "guild_only": "sea_lion_pit",   "min_level": 5},
+    "soldier_helmet":   {"price": 50, "guild_only": "the_barracks",   "min_level": 5},
+    "cultist_robe":     {"price": 50, "guild_only": "cursed_temple",  "min_level": 5},
+    "executioner_hood": {"price": 50, "guild_only": "the_guillotine", "min_level": 5},
     # ── ADD NEW SHOP ITEMS BELOW ──────────────────────────────────────────────
 }
 
 # ── XP & Levels ───────────────────────────────────────────────────────────────
-XP_PER_GATHER  = 10
-XP_PER_LOOT    = 25
-XP_PER_LEVEL   = 100
+XP_PER_GATHER       = 10
+XP_PER_LOOT         = 25
+XP_PER_LEVEL        = 100
+LEVEL_GATHER_BONUS  = 0.02   # +2% per level to all guild resources
