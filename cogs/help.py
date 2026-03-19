@@ -54,7 +54,7 @@ class HelpCog(commands.Cog):
             "  !offer 3 fish for 2g  → Post a market listing\n"
             "  !market                → Browse market listings\n"
             "  !claim <code>          → Claim a market listing\n"
-            "  !unoffer               → Cancel your market listing\n"
+            "  !unoffer <code>          → Cancel a specific market listing\n"
             "\n"
             "STREAM LOOT  🔴\n"
             "  !loot                  → Claim loot during a live drop\n"

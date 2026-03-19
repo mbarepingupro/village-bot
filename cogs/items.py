@@ -108,14 +108,14 @@ def apply_trick_coin(player: dict, data: dict) -> str:
 def apply_wanderer_map(player: dict, data: dict) -> str:
     """Bonus gather of all resource types."""
     loot = {
-        "wood":  random.randint(4, 10),
-        "stone": random.randint(3, 8),
-        "fish":  random.randint(2, 6),
-        "herbs": random.randint(1, 4),
+        "wood": random.randint(4, 10),
+        "fish": random.randint(2, 6),
+        "herb": random.randint(1, 4),
+        "egg":  random.randint(2, 5),
     }
     for item_id, qty in loot.items():
         add_item(player, item_id, qty)
-    lines = "  ".join(f"{ITEMS[k]['emoji']}{v}" for k, v in loot.items())
+    lines = "  ".join(f"{ITEMS[k]['emoji']} {v}" for k, v in loot.items())
     return f"🗺️ **The map leads somewhere good!** You find: {lines}"
 
 
@@ -125,30 +125,65 @@ def apply_golden_herring(player: dict, data: dict) -> str:
     return "🥇 **You trade the Golden Herring for 10🐟 fish!**"
 
 
+def apply_gather_boost(player: dict, data: dict) -> str:
+    """50% gather bonus on next gather — effect tag stored on protein_shake item."""
+    player.setdefault("active_effects", {})
+    player["active_effects"]["gather_multiplier"] = 1.5
+    return "🥤 **Protein Shake!** Your next `!gather` gives +50% resources!"
+
+
+def apply_triple_gather(player: dict, data: dict) -> str:
+    """2x gather for next 3 gathers — effect tag stored on crystal_potion item."""
+    player.setdefault("active_effects", {})
+    player["active_effects"]["crystal_boost_remaining"] = 3
+    return "💎 **Crystal Potion!** Your next **3 gathers** yield 2x resources!"
+
+
+def apply_wild_floor_once(player: dict, data: dict) -> str:
+    """Sequin charm — Wild Roll minimum is 1x for one gather."""
+    player.setdefault("active_effects", {})
+    player["active_effects"]["wild_floor_once"] = True
+    return "✨ **Sequin Charm!** Your next Wild Roll will be at least 1x!"
+
+
+def apply_craft_reset(player: dict, data: dict) -> str:
+    """Meat stew — reset craft cooldown immediately."""
+    player["cooldowns"]["craft"] = 0
+    return "🍲 **Meat Stew consumed!** Your craft cooldown has been reset!"
+
+
 # ── Effect registry ───────────────────────────────────────────────────────────
 # Maps effect tag (string) → function
 # ➕ Register new effects here
 
 EFFECTS = {
-    "mystery":        apply_mystery,
-    "cooldown_reset": apply_cooldown_reset,
-    "trick_coin":     apply_trick_coin,
-    "wanderer_map":   apply_wanderer_map,
-    "golden_herring": apply_golden_herring,
-    "bone_brew":      apply_bone_brew,
-    "crystal_potion": apply_crystal_potion,
-    "protein_shake":  apply_protein_shake,
+    "mystery":          apply_mystery,
+    "cooldown_reset":   apply_cooldown_reset,
+    "trick_coin":       apply_trick_coin,
+    "wanderer_map":     apply_wanderer_map,
+    "golden_herring":   apply_golden_herring,
+    "bone_brew":        apply_bone_brew,
+    "crystal_potion":   apply_crystal_potion,
+    "triple_gather":    apply_triple_gather,
+    "protein_shake":    apply_protein_shake,
+    "gather_boost":     apply_gather_boost,
+    "wild_floor_once":  apply_wild_floor_once,
+    "craft_reset":      apply_craft_reset,
 }
 
 ITEM_EFFECTS = {
     "mystery_potion":       "mystery",
     "get_out_of_jail_card": "cooldown_reset",
+    "ration_pack":          "cooldown_reset",
+    "cursed_relic":         "mystery",
     "trick_coin":           "trick_coin",
     "wanderer_map":         "wanderer_map",
     "golden_herring":       "golden_herring",
     "bone_brew":            "bone_brew",
-    "crystal_potion":       "crystal_potion",
-    "protein_shake":        "protein_shake",
+    "crystal_potion":       "triple_gather",
+    "protein_shake":        "gather_boost",
+    "sequin_charm":         "wild_floor_once",
+    "meat_stew":            "craft_reset",
 }
 
 

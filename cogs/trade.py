@@ -504,9 +504,10 @@ class TradeCog(commands.Cog):
                     clean_expired(data)
                     listings = get_listings(data)
 
-                    # One active listing per player
-                    if any(l["from_uid"] == str(ctx.author.id) for l in listings.values()):
-                        await ctx.send("❌ You already have an active listing. Use `!unoffer` to cancel it first.")
+                    # Max 5 active listings per player
+                    my_listings = [l for l in listings.values() if l["from_uid"] == str(ctx.author.id)]
+                    if len(my_listings) >= 5:
+                        await ctx.send("❌ You have 5 active listings — the maximum. Use `!unoffer <code>` to cancel one first.")
                         return
 
                     # Validate and escrow
@@ -657,8 +658,8 @@ class TradeCog(commands.Cog):
 
     # ── !unoffer ──────────────────────────────────────────────────────────────
     @commands.command(name="unoffer")
-    async def unoffer(self, ctx):
-        """Cancel your open market listing and get your items back."""
+    async def unoffer(self, ctx, code: str = None):
+        """Cancel a market listing and get your items back. Usage: !unoffer <code>"""
         try:
             if not self.in_trade_channel(ctx):
                 await self.send_trade_only(ctx)
@@ -669,17 +670,32 @@ class TradeCog(commands.Cog):
                 clean_expired(data)
                 listings = get_listings(data)
 
-                my_listing = None
-                my_code    = None
-                for code, listing in listings.items():
-                    if listing["from_uid"] == str(ctx.author.id):
-                        my_listing = listing
-                        my_code    = code
-                        break
+                my_listings = {c: l for c, l in listings.items() if l["from_uid"] == str(ctx.author.id)}
 
-                if my_listing is None:
-                    await ctx.send("📭 You have no active market listing.")
+                if not my_listings:
+                    await ctx.send("📭 You have no active market listings.")
                     return
+
+                # If no code given and player has multiple, show their listings
+                if code is None:
+                    if len(my_listings) == 1:
+                        # Only one listing — cancel it automatically
+                        code = list(my_listings.keys())[0]
+                    else:
+                        lines = ["**Your active listings — use `!unoffer <code>` to cancel one:**\n"]
+                        for c, l in my_listings.items():
+                            giving  = fmt_side(l["offer_item"], l["offer_qty"], l["offer_type"] == "gold")
+                            wanting = fmt_side(l["want_item"],  l["want_qty"],  l["want_type"]  == "gold")
+                            lines.append(f"`{c}` — {giving} for {wanting}")
+                        await ctx.send("\n".join(lines))
+                        return
+
+                code = code.upper()
+                if code not in my_listings:
+                    await ctx.send(f"❌ Listing `{code}` not found or doesn't belong to you.")
+                    return
+
+                my_listing = listings[code]
 
                 # Refund
                 sender = get_player(data, ctx.author)
@@ -688,10 +704,10 @@ class TradeCog(commands.Cog):
                 else:
                     add_item(sender, my_listing["offer_item"], int(my_listing["offer_qty"]))
 
-                del listings[my_code]
+                del listings[code]
                 save_data(data)
 
-            await ctx.send("↩️ Listing cancelled. Your items have been returned.")
+            await ctx.send(f"↩️ Listing `{code}` cancelled. Your items have been returned.")
 
         except Exception as e:
             await ctx.send(f"❌ Error: {e}")
