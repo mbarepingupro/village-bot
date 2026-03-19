@@ -17,7 +17,7 @@ import random
 import discord
 from discord.ext import commands
 from config import (
-    GUILDS, ITEMS, MOD_ROLE_NAMES,
+    LEVEL_GATHER_BONUS, GUILDS, ITEMS, MOD_ROLE_NAMES,
     COOLDOWNS, LOOT_WINDOW_SECONDS,
     XP_PER_LOOT, XP_PER_LEVEL, GOLD_LOOT_REWARD
 )

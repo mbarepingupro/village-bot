@@ -11,7 +11,7 @@ Guild upgrade effects are checked from shared guild state.
 import random
 import discord
 from discord.ext import commands
-from config import GUILDS, ITEMS, BASE_GATHER, COOLDOWNS, RECIPES, XP_PER_GATHER, XP_PER_LEVEL
+from config import GUILDS, ITEMS, BASE_GATHER, COOLDOWNS, RECIPES, XP_PER_GATHER, XP_PER_LEVEL, LEVEL_GATHER_BONUS
 from cogs.data import (
     load_data, save_data, get_player,
     add_item, remove_item, cooldown_remaining, set_cooldown,
@@ -78,6 +78,16 @@ class GatherCog(commands.Cog):
                         for res in bonuses:
                             bonuses[res] = bonuses.get(res, 1.0) * 1.2
 
+                    # Mixologist gather boost (Club Soda Tier 1)
+                    if "mixologist_gather_boost" in effects and guild_key == "club_soda":
+                        for res in ["herb", "alcohol"]:
+                            bonuses[res] = bonuses.get(res, 1.0) + 0.3
+
+                    # Level bonus — +2% per level to all resources
+                    level_bonus = 1.0 + (player.get("level", 1) - 1) * LEVEL_GATHER_BONUS
+                    for res in list(bonuses.keys()):
+                        bonuses[res] = bonuses[res] * level_bonus
+
                     # ── Active effects from consumables ───────────────────────
                     multiplier     = 1.0
                     active_effects = player.get("active_effects", {})
@@ -85,17 +95,13 @@ class GatherCog(commands.Cog):
                     if "gather_multiplier" in active_effects:
                         multiplier = active_effects.pop("gather_multiplier")
 
-                    elif "crystal_charges" in active_effects:
-                        charges = active_effects["crystal_charges"]
+                    elif "crystal_boost_remaining" in active_effects:
+                        charges = active_effects["crystal_boost_remaining"]
                         if charges > 0:
                             multiplier = 2.0
-                            active_effects["crystal_charges"] -= 1
-                            if active_effects["crystal_charges"] <= 0:
-                                del active_effects["crystal_charges"]
-
-                    elif "gather_boost" in active_effects:
-                        multiplier = 1.5
-                        del active_effects["gather_boost"]
+                            active_effects["crystal_boost_remaining"] -= 1
+                            if active_effects["crystal_boost_remaining"] <= 0:
+                                del active_effects["crystal_boost_remaining"]
 
                     # ── Class-specific mechanics ──────────────────────────────
                     chaos_chance  = 0.3 if "chaos_boost" in effects else 0.2
@@ -217,7 +223,13 @@ class GatherCog(commands.Cog):
                 if splash_msg:
                     msg += splash_msg
                 if levelled:
-                    msg += f"\n⬆️ **LEVEL UP! Now level {player['level']}!**"
+                    level     = player['level']
+                    bonus_pct = round((level - 1) * LEVEL_GATHER_BONUS * 100)
+                    msg += (
+                        f"\n⬆️ **LEVEL UP! You are now Level {level}!**\n"
+                        f"📈 Gather bonus: **+{bonus_pct}% to all resources**\n"
+                        f"🏪 Check `!shop` — new items may be available at your level!"
+                    )
 
                 await ctx.send(msg)
 

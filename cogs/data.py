@@ -139,8 +139,14 @@ def sanitize_qty(qty, max_qty: int) -> int | None:
 def is_super(ctx) -> bool:
     """Returns True if the user has a SUPER_ROLES role (bypasses cooldowns)."""
     from config import SUPER_ROLES
+    # In a server — check roles
     if isinstance(ctx.author, discord.Member):
         return any(r.name in SUPER_ROLES for r in ctx.author.roles)
+    # In a DM — check if the bot can find the member in any mutual guild
+    for guild in ctx.bot.guilds:
+        member = guild.get_member(ctx.author.id)
+        if member and any(r.name in SUPER_ROLES for r in member.roles):
+            return True
     return False
 
 def is_mod(ctx) -> bool:
@@ -148,6 +154,10 @@ def is_mod(ctx) -> bool:
     from config import MOD_ROLE_NAMES
     if isinstance(ctx.author, discord.Member):
         return any(r.name in MOD_ROLE_NAMES for r in ctx.author.roles)
+    for guild in ctx.bot.guilds:
+        member = guild.get_member(ctx.author.id)
+        if member and any(r.name in MOD_ROLE_NAMES for r in member.roles):
+            return True
     return False
 
 # ── Cog ───────────────────────────────────────────────────────────────────────

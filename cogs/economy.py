@@ -119,166 +119,212 @@ class EconomyCog(commands.Cog):
     @commands.command(name="shop")
     async def shop(self, ctx):
         """Browse the shop. Buy with !buy <item>."""
-        data   = load_data()
-        player = get_player(data, ctx.author)
-        save_data(data)
+        try:
+            data   = load_data()
+            player = get_player(data, ctx.author)
+            save_data(data)
 
-        player_guild = player.get("guild")
+            player_guild = player.get("guild")
+            player_level = player.get("level", 1)
 
-        tools      = []
-        cosmetics  = []
-        exclusives = []
+            tools      = []
+            cosmetics  = []
+            exclusives = []
+            locked_out = []
 
-        for item_id, listing in SHOP.items():
-            item      = ITEMS.get(item_id, {"name": item_id, "emoji": "❓", "type": "?"})
-            price     = listing["price"]
-            guild_key = listing.get("guild_only")
-            owned     = player["inventory"].get(item_id, 0) > 0 or player.get("equipped_tool") == item_id
+            for item_id, listing in SHOP.items():
+                item      = ITEMS.get(item_id, {"name": item_id, "emoji": "❓", "type": "?"})
+                price     = listing["price"]
+                guild_key = listing.get("guild_only")
+                min_level = listing.get("min_level", 1)
+                owned     = (player["inventory"].get(item_id, 0) > 0 or
+                             player.get("equipped_tool") == item_id or
+                             item_id in player.get("cosmetics", {}).values())
 
-            tag = "✅ owned" if owned else f"{price}💰"
+                # Level locked
+                if player_level < min_level and not is_super(ctx):
+                    locked_out.append(
+                        f"🔒 **{item['name']}** — *requires level {min_level}*"
+                    )
+                    continue
 
-            if guild_key:
-                guild_name = GUILDS.get(guild_key, {}).get("display_name", guild_key)
-                lock = "" if player_guild == guild_key else f" 🔒 *{guild_name} only*"
-                exclusives.append(f"{item['emoji']} **{item['name']}** — {tag}{lock}\n   *{item['description']}*")
-            elif item["type"] == "tool":
-                tools.append(f"{item['emoji']} **{item['name']}** — {tag}\n   *{item['description']}*")
-            else:
-                cosmetics.append(f"{item['emoji']} **{item['name']}** — {tag}\n   *{item['description']}*")
+                tag = "✅ owned" if owned else f"{price}g"
 
-        lines = [f"🏪 **The Shop** — your balance: **{fmt_gold(player['gold'])}g**\n"]
+                if guild_key:
+                    guild_name = GUILDS.get(guild_key, {}).get("display_name", guild_key)
+                    lock = "" if player_guild == guild_key else f" 🔒 *{guild_name} only*"
+                    exclusives.append(
+                        f"{item['emoji']} **{item['name']}** — {tag}{lock}\n"
+                        f"   *{item['description']}*"
+                    )
+                elif item["type"] == "tool":
+                    tools.append(
+                        f"{item['emoji']} **{item['name']}** — {tag}\n"
+                        f"   *{item['description']}*"
+                    )
+                else:
+                    cosmetics.append(
+                        f"{item['emoji']} **{item['name']}** — {tag}\n"
+                        f"   *{item['description']}*"
+                    )
 
-        if tools:
-            lines.append("**⚒️ Gather Tools**")
-            lines.extend(tools)
-        if cosmetics:
-            lines.append("\n**🎨 Cosmetics**")
-            lines.extend(cosmetics)
-        if exclusives:
-            lines.append("\n**⭐ Guild Exclusives**")
-            lines.extend(exclusives)
+            lines = [
+                f"🏪 **The Shop** — Level {player_level} | Balance: **{fmt_gold(player['gold'])}g**\n"
+            ]
 
-        lines.append("\nUse `!buy <item name>` to purchase.")
-        await ctx.send("\n".join(lines))
+            if tools:
+                lines.append("**⚒️ Gather Tools**")
+                lines.extend(tools)
+            if cosmetics:
+                lines.append("\n**🎨 Cosmetics**")
+                lines.extend(cosmetics)
+            if exclusives:
+                lines.append("\n**⭐ Guild Exclusives**")
+                lines.extend(exclusives)
+            if locked_out:
+                lines.append("\n**🔒 Locked (level up to unlock)**")
+                lines.extend(locked_out)
+
+            lines.append("\nUse `!buy <item name>` to purchase.")
+            await ctx.send("\n".join(lines))
+
+        except Exception as e:
+            await ctx.send(f"❌ Error: {e}")
 
     # ── !buy ──────────────────────────────────────────────────────────────────
     @commands.command(name="buy")
     async def buy(self, ctx, *, item_name: str):
         """Buy an item from the shop. Usage: !buy iron axe"""
-        data   = load_data()
-        player = get_player(data, ctx.author)
+        try:
+            data   = load_data()
+            player = get_player(data, ctx.author)
 
-        # Match shop listing
-        matched_id = None
-        for item_id in SHOP:
-            item = ITEMS.get(item_id, {"name": item_id})
-            if item_name.lower() in [item_id.lower(), item["name"].lower()]:
-                matched_id = item_id
-                break
+            matched_id = None
+            for item_id in SHOP:
+                item = ITEMS.get(item_id, {"name": item_id})
+                if item_name.lower() in [item_id.lower(), item["name"].lower()]:
+                    matched_id = item_id
+                    break
 
-        if matched_id is None:
-            await ctx.send(f"❌ `{item_name}` not found in the shop. Check `!shop`.")
-            return
+            if matched_id is None:
+                await ctx.send(f"❌ `{item_name}` not found in the shop. Check `!shop`.")
+                return
 
-        listing  = SHOP[matched_id]
-        item_def = ITEMS[matched_id]
+            listing  = SHOP[matched_id]
+            item_def = ITEMS[matched_id]
 
-        # Guild restriction
-        guild_key = listing.get("guild_only")
-        if guild_key and player.get("guild") != guild_key:
-            guild_name = GUILDS.get(guild_key, {}).get("display_name", guild_key)
-            await ctx.send(f"🔒 **{item_def['name']}** is only available to **{guild_name}** members.")
-            return
+            # Level check
+            min_level = listing.get("min_level", 1)
+            if player.get("level", 1) < min_level and not is_super(ctx):
+                await ctx.send(
+                    f"🔒 **{item_def['name']}** requires **level {min_level}**. "
+                    f"You are level {player.get('level', 1)}."
+                )
+                return
 
-        # Already owned
-        already_has = (
-            player["inventory"].get(matched_id, 0) > 0 or
-            player.get("equipped_tool") == matched_id or
-            matched_id in player.get("cosmetics", {}).values()
-        )
-        if already_has:
-            await ctx.send(f"✅ You already own **{item_def['emoji']} {item_def['name']}**.")
-            return
+            # Guild restriction
+            guild_key = listing.get("guild_only")
+            if guild_key and player.get("guild") != guild_key and not is_super(ctx):
+                guild_name = GUILDS.get(guild_key, {}).get("display_name", guild_key)
+                await ctx.send(f"🔒 **{item_def['name']}** is only available to **{guild_name}** members.")
+                return
 
-        # Funds check
-        price = listing["price"]
-        if not spend_gold(player, price):
-            await ctx.send(
-                f"❌ Not enough gold! **{item_def['name']}** costs **{price}💰** "
-                f"but you only have **{player['gold']}💰**.\n"
-                f"Sell resources with `!sell` to earn more."
+            # Already owned
+            already_has = (
+                player["inventory"].get(matched_id, 0) > 0 or
+                player.get("equipped_tool") == matched_id or
+                matched_id in player.get("cosmetics", {}).values()
             )
-            return
+            if already_has and not is_super(ctx):
+                await ctx.send(f"✅ You already own **{item_def['emoji']} {item_def['name']}**.")
+                return
 
-        if user_lock(ctx.author.id, "buy").locked():
-            return
+            price = listing["price"]
 
-        async with user_lock(ctx.author.id, "buy"):
-            async with data_lock:
-                # Re-load inside lock so concurrent buyers can't both succeed
-                data   = load_data()
-                player = get_player(data, ctx.author)
-                # Re-check funds inside lock
-                if not spend_gold(player, price):
-                    await ctx.send(
-                        f"❌ Not enough gold! **{item_def['name']}** costs **{price}💰** "
-                        f"but you only have **{player['gold']}💰**."
-                    )
-                    return
-                add_item(player, matched_id, 1)
-                save_data(data)
+            if user_lock(ctx.author.id, "buy").locked():
+                return
 
-        await ctx.send(
-            f"🛍️ **{ctx.author.display_name}** bought **{item_def['emoji']} {item_def['name']}** "
-            f"for **{price}💰**!\n"
-            f"Remaining balance: **{fmt_gold(player['gold'])}g**\n"
-            + (f"Use `!equip {item_def['name']}` to put it to work!" if item_def["type"] in ("tool", "cosmetic") else "")
-        )
+            async with user_lock(ctx.author.id, "buy"):
+                async with data_lock:
+                    data   = load_data()
+                    player = get_player(data, ctx.author)
+                    if not spend_gold(player, price):
+                        await ctx.send(
+                            f"❌ Not enough gold! **{item_def['name']}** costs **{price}g** "
+                            f"but you only have **{fmt_gold(player['gold'])}g**."
+                        )
+                        return
+                    add_item(player, matched_id, 1)
+                    save_data(data)
+
+            await ctx.send(
+                f"🛍️ **{ctx.author.display_name}** bought **{item_def['emoji']} {item_def['name']}** "
+                f"for **{price}g**!\n"
+                f"Remaining balance: **{fmt_gold(player['gold'])}g**\n"
+                + (f"Use `!equip {item_def['name']}` to put it to work!"
+                   if item_def["type"] in ("tool", "cosmetic") else "")
+            )
+
+        except Exception as e:
+            await ctx.send(f"❌ Error: {e}")
 
     # ── !equip ────────────────────────────────────────────────────────────────
     @commands.command(name="equip")
     async def equip(self, ctx, *, item_name: str):
         """Equip a tool or cosmetic you own. Usage: !equip iron axe"""
-        data   = load_data()
-        player = get_player(data, ctx.author)
+        try:
+            data   = load_data()
+            player = get_player(data, ctx.author)
 
-        # Match item in inventory
-        matched_id = None
-        for item_id in player["inventory"]:
-            item = ITEMS.get(item_id, {"name": item_id})
-            if item_name.lower() in [item_id.lower(), item["name"].lower()]:
-                matched_id = item_id
-                break
+            matched_id = None
+            for item_id in player["inventory"]:
+                item = ITEMS.get(item_id, {"name": item_id})
+                if item_name.lower() in [item_id.lower(), item["name"].lower()]:
+                    matched_id = item_id
+                    break
 
-        if matched_id is None:
-            await ctx.send(
-                f"❌ You don't have `{item_name}` in your bag. "
-                f"Buy it with `!buy` first, then equip it."
-            )
-            return
+            if matched_id is None:
+                await ctx.send(
+                    f"❌ You don't have `{item_name}` in your bag. "
+                    f"Buy it with `!buy` first."
+                )
+                return
 
-        item_def = ITEMS.get(matched_id, {})
-        item_type = item_def.get("type")
+            item_def   = ITEMS.get(matched_id, {})
+            item_type  = item_def.get("type")
 
-        if item_type == "tool":
-            player["equipped_tool"] = matched_id
-            save_data(data)
-            await ctx.send(
-                f"⚒️ **{ctx.author.display_name}** equipped **{item_def['emoji']} {item_def['name']}**!\n"
-                f"*{item_def['description']}*"
-            )
+            # Level check — use shop min_level if item is in shop
+            if matched_id in SHOP:
+                min_level = SHOP[matched_id].get("min_level", 1)
+                if player.get("level", 1) < min_level and not is_super(ctx):
+                    await ctx.send(
+                        f"🔒 **{item_def['name']}** requires **level {min_level}** to equip. "
+                        f"You are level {player.get('level', 1)}."
+                    )
+                    return
 
-        elif item_type == "cosmetic":
-            slot = item_def.get("slot", "accessory")
-            player.setdefault("cosmetics", {})[slot] = matched_id
-            save_data(data)
-            await ctx.send(
-                f"✨ **{ctx.author.display_name}** equipped **{item_def['emoji']} {item_def['name']}** "
-                f"[{slot}]!\n*{item_def['description']}*"
-            )
+            if item_type == "tool":
+                player["equipped_tool"] = matched_id
+                save_data(data)
+                await ctx.send(
+                    f"⚒️ **{ctx.author.display_name}** equipped "
+                    f"**{item_def['emoji']} {item_def['name']}**!\n"
+                    f"*{item_def['description']}*"
+                )
+            elif item_type == "cosmetic":
+                slot = item_def.get("slot", "accessory")
+                player.setdefault("cosmetics", {})[slot] = matched_id
+                save_data(data)
+                await ctx.send(
+                    f"✨ **{ctx.author.display_name}** equipped "
+                    f"**{item_def['emoji']} {item_def['name']}** [{slot}]!\n"
+                    f"*{item_def['description']}*"
+                )
+            else:
+                await ctx.send(f"❌ **{item_def.get('name', matched_id)}** can't be equipped.")
 
-        else:
-            await ctx.send(f"❌ **{item_def.get('name', matched_id)}** can't be equipped.")
+        except Exception as e:
+            await ctx.send(f"❌ Error: {e}")
 
     # ── !addgold ──────────────────────────────────────────────────────────────
     @commands.command(name="addgold")

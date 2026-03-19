@@ -67,6 +67,28 @@ def apply_mystery(player: dict, data: dict) -> str:
         return "🤢 *It tasted awful and did absolutely nothing.*"
 
 
+def apply_bone_brew(player: dict, data: dict) -> str:
+    """Reset gather cooldown and give a small bone bonus."""
+    player["cooldowns"]["gather"] = 0
+    add_item(player, "bone", random.randint(3, 6))
+    bones = player["inventory"].get("bone", 0)
+    return f"🍺 **Bone Brew consumed!** Gather cooldown reset + bonus bones added. You now have {bones} bones."
+
+
+def apply_crystal_potion(player: dict, data: dict) -> str:
+    """2x gather multiplier for next 3 gathers."""
+    player.setdefault("active_effects", {})
+    player["active_effects"]["crystal_boost_remaining"] = 3
+    return "💎 **Crystal Potion!** Your next **3 gathers** yield 2x resources!"
+
+
+def apply_protein_shake(player: dict, data: dict) -> str:
+    """50% gather bonus on next gather."""
+    player.setdefault("active_effects", {})
+    player["active_effects"]["gather_multiplier"] = 1.5
+    return "🥤 **Protein Shake!** Your next `!gather` gives +50% resources!"
+
+
 def apply_cooldown_reset(player: dict, data: dict) -> str:
     """Reset gather cooldown immediately."""
     player["cooldowns"]["gather"] = 0
@@ -113,18 +135,20 @@ EFFECTS = {
     "trick_coin":     apply_trick_coin,
     "wanderer_map":   apply_wanderer_map,
     "golden_herring": apply_golden_herring,
+    "bone_brew":      apply_bone_brew,
+    "crystal_potion": apply_crystal_potion,
+    "protein_shake":  apply_protein_shake,
 }
 
-# ── Updated item definitions with effect tags ─────────────────────────────────
-# These override the effect-less versions in config.py.
-# When adding a new consumable, add "effect": "your_tag" to its config.py entry.
-
 ITEM_EFFECTS = {
-    "mystery_potion":      "mystery",
+    "mystery_potion":       "mystery",
     "get_out_of_jail_card": "cooldown_reset",
-    "trick_coin":          "trick_coin",
-    "wanderer_map":        "wanderer_map",
-    "golden_herring":      "golden_herring",
+    "trick_coin":           "trick_coin",
+    "wanderer_map":         "wanderer_map",
+    "golden_herring":       "golden_herring",
+    "bone_brew":            "bone_brew",
+    "crystal_potion":       "crystal_potion",
+    "protein_shake":        "protein_shake",
 }
 
 

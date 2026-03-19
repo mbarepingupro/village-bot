@@ -126,16 +126,16 @@ class GuildCog(commands.Cog):
 
     # ── !contribute ───────────────────────────────────────────────────────────
     @commands.command(name="contribute", aliases=["donate"])
-    async def contribute(self, ctx, item_name: str = None, qty: int = None, *, guild_name: str = None):
+    async def contribute(self, ctx, *, args: str = None):
         """
         Donate resources to any guild's upgrade pool.
         Usage:
-          !contribute                         → see all guilds and what they need
-          !contribute fish 10                 → donate to YOUR guild
-          !contribute fish 10 sea lion pit    → donate to a specific guild
+          !contribute                           → see all guilds and what they need
+          !contribute 5 fish                    → donate to YOUR guild
+          !contribute 5 fish to horny jail      → donate to a specific guild
         """
         try:
-            if item_name is None:
+            if args is None:
                 # Show all guilds and what they currently need
                 data  = load_data()
                 lines = ["**🔨 Guild Upgrade Needs — what each guild is working toward:**\n"]
@@ -164,9 +164,36 @@ class GuildCog(commands.Cog):
 
                 save_data(data)
                 if any_in_progress:
-                    lines.append("\nUse `!contribute <resource> <qty>` to donate to your guild")
-                    lines.append("or `!contribute <resource> <qty> <guild name>` for any guild.")
+                    lines.append("\nUse `!contribute 5 fish` or `!contribute 5 fish to horny jail`")
                 await ctx.send("\n".join(lines))
+                return
+
+            # ── Parse "!contribute 5 fish [to <guild>]" ──────────────────────
+            guild_name = None
+            if " to " in args.lower():
+                parts      = args.lower().split(" to ", 1)
+                item_part  = parts[0].strip()
+                guild_name = parts[1].strip()
+            else:
+                item_part = args.lower().strip()
+
+            # Split qty and item name
+            tokens = item_part.split(None, 1)
+            if len(tokens) < 2:
+                await ctx.send(
+                    "❌ Usage: `!contribute 5 fish` or `!contribute 5 fish to horny jail`"
+                )
+                return
+
+            try:
+                qty       = int(tokens[0])
+                item_name = tokens[1].strip()
+            except ValueError:
+                await ctx.send("❌ Usage: `!contribute 5 fish` — quantity must be a number.")
+                return
+
+            if qty <= 0:
+                await ctx.send("❌ Quantity must be greater than 0.")
                 return
 
             if user_lock(ctx.author.id, "contribute").locked():
@@ -181,16 +208,18 @@ class GuildCog(commands.Cog):
                         await ctx.send("⚠️ Join a guild first with `!join`.")
                         return
 
-                    # Determine target guild — player's own or specified
+                    # Determine target guild
                     guild_key = player["guild"]
                     if guild_name:
+                        matched = None
                         for key, g_cfg in GUILDS.items():
-                            if guild_name.lower() in [key.lower(), g_cfg["display_name"].lower()]:
-                                guild_key = key
+                            if guild_name in [key.lower(), g_cfg["display_name"].lower()]:
+                                matched = key
                                 break
-                        else:
-                            await ctx.send(f"❌ Guild `{guild_name}` not found.")
+                        if matched is None:
+                            await ctx.send(f"❌ Guild `{guild_name}` not found. Type `!guilds` to see options.")
                             return
+                        guild_key = matched
 
                     g           = GUILDS[guild_key]
                     guild_state = get_guild_data(data, guild_key)
@@ -201,11 +230,16 @@ class GuildCog(commands.Cog):
                         await ctx.send(f"🏆 **{g['display_name']}** is already at max tier!")
                         return
 
-                    # Match item
+                    # Match item — case insensitive, also match short names
                     matched_id = None
-                    for item_id in ITEMS:
-                        item = ITEMS[item_id]
-                        if item_name.lower() in [item_id.lower(), item["name"].lower()]:
+                    for item_id, item_def in ITEMS.items():
+                        aliases = [
+                            item_id.lower(),
+                            item_def["name"].lower(),
+                            # short alias: first word of name
+                            item_def["name"].lower().split()[0],
+                        ]
+                        if item_name in aliases:
                             matched_id = item_id
                             break
 
@@ -214,34 +248,27 @@ class GuildCog(commands.Cog):
                         return
 
                     # Check it's needed for the current upgrade
-                    next_up  = upgrades[tier]
-                    cost     = next_up["cost"]
+                    next_up = upgrades[tier]
+                    cost    = next_up["cost"]
                     if matched_id not in cost:
                         needed = ", ".join(
-                            f"{ITEMS[k]['emoji']} {ITEMS[k]['name']}"
-                            for k in cost
+                            f"{ITEMS[k]['emoji']} {ITEMS[k]['name']}" for k in cost
                         )
                         await ctx.send(
-                            f"❌ **{g['display_name']}** doesn't need `{item_name}` right now.\n"
+                            f"❌ **{g['display_name']}** doesn't need that right now.\n"
                             f"Current upgrade needs: {needed}"
                         )
-                        return
-
-                    # Validate qty
-                    if qty is None or qty <= 0:
-                        await ctx.send("❌ Please provide a quantity greater than 0.")
                         return
 
                     in_bag = player["inventory"].get(matched_id, 0)
                     if in_bag == 0:
                         item_def = ITEMS[matched_id]
                         await ctx.send(
-                            f"❌ You don't have any "
-                            f"{item_def['emoji']} {item_def['name']} to donate."
+                            f"❌ You don't have any {item_def['emoji']} {item_def['name']} to donate."
                         )
                         return
 
-                    # Clamp qty to what player has and what's still needed
+                    # Clamp qty
                     still_needed = cost[matched_id] - guild_state["pool"].get(matched_id, 0)
                     qty = min(qty, in_bag, still_needed)
 
@@ -252,7 +279,6 @@ class GuildCog(commands.Cog):
                         )
                         return
 
-                    # Deduct from player using safe helper, add to pool
                     if not remove_item(player, matched_id, qty):
                         await ctx.send("❌ Inventory changed unexpectedly. Please try again.")
                         return
@@ -261,7 +287,6 @@ class GuildCog(commands.Cog):
                         guild_state["pool"].get(matched_id, 0) + qty
                     )
 
-                    # Check for unlock
                     unlock_msg = check_and_unlock(guild_key, guild_state)
                     save_data(data)
 
@@ -273,7 +298,6 @@ class GuildCog(commands.Cog):
                 )
                 if unlock_msg:
                     msg += f"\n\n{unlock_msg}"
-
                 await ctx.send(msg)
 
         except Exception as e:
