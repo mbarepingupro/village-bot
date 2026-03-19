@@ -444,6 +444,73 @@ ITEMS = {
         "tradeable": False,
     },
 
+    "egg_basket": {
+        "name": "Egg Basket", "emoji": "🧺",
+        "type": "tool", "slot": "tool",
+        "description": "+50% eggs on every gather while equipped.",
+        "tradeable": False, "bonus": {"egg": 0.5},
+    },
+    "bone_saw": {
+        "name": "Bone Saw", "emoji": "🪚",
+        "type": "tool", "slot": "tool",
+        "description": "+50% bone on every gather while equipped.",
+        "tradeable": False, "bonus": {"bone": 0.5},
+    },
+    "herb_pouch": {
+        "name": "Herb Pouch", "emoji": "👜",
+        "type": "tool", "slot": "tool",
+        "description": "+50% herbs on every gather while equipped.",
+        "tradeable": False, "bonus": {"herb": 0.5},
+    },
+    "flask": {
+        "name": "Flask", "emoji": "🫙",
+        "type": "tool", "slot": "tool",
+        "description": "+50% alcohol on every gather while equipped.",
+        "tradeable": False, "bonus": {"alcohol": 0.5},
+    },
+    "candy_bag": {
+        "name": "Candy Bag", "emoji": "🎒",
+        "type": "tool", "slot": "tool",
+        "description": "+50% candy on every gather while equipped.",
+        "tradeable": False, "bonus": {"candy": 0.5},
+    },
+    "confetti_cannon": {
+        "name": "Confetti Cannon", "emoji": "🎉",
+        "type": "tool", "slot": "tool",
+        "description": "+50% confetti on every gather while equipped.",
+        "tradeable": False, "bonus": {"confetti": 0.5},
+    },
+    "hunting_knife": {
+        "name": "Hunting Knife", "emoji": "🔪",
+        "type": "tool", "slot": "tool",
+        "description": "+50% meat on every gather while equipped.",
+        "tradeable": False, "bonus": {"meat": 0.5},
+    },
+    "fur_trap": {
+        "name": "Fur Trap", "emoji": "🪤",
+        "type": "tool", "slot": "tool",
+        "description": "+50% fur on every gather while equipped.",
+        "tradeable": False, "bonus": {"fur": 0.5},
+    },
+    "candle_mold": {
+        "name": "Candle Mold", "emoji": "🕯️",
+        "type": "tool", "slot": "tool",
+        "description": "+50% candles on every gather while equipped.",
+        "tradeable": False, "bonus": {"candle": 0.5},
+    },
+    "soul_jar": {
+        "name": "Soul Jar", "emoji": "🫙",
+        "type": "tool", "slot": "tool",
+        "description": "+50% soul shards on every gather while equipped.",
+        "tradeable": False, "bonus": {"soul_shard": 0.5},
+    },
+    "blood_vial": {
+        "name": "Blood Vial", "emoji": "🧪",
+        "type": "tool", "slot": "tool",
+        "description": "+50% blood beans on every gather while equipped.",
+        "tradeable": False, "bonus": {"blood_bean": 0.5},
+    },
+
     # ── ADD NEW ITEMS BELOW THIS LINE ──────────────────────────────────────────
     # "my_item": {
     #     "name": "My Item", "emoji": "✨",
