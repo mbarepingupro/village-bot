@@ -31,7 +31,7 @@ PUBLIC_COMMANDS = {
 # Trade commands — only in trade channel
 TRADE_COMMANDS = {
     "trade", "accept", "decline", "canceltrade",
-    "offer", "market", "buy", "unoffer"
+    "offer", "market", "claim", "unoffer"
 }
 
 COGS = [
