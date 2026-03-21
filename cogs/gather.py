@@ -138,19 +138,15 @@ class GatherCog(commands.Cog):
                         # Ritual: chance to find a random resource from ANY guild
                         ritual_chance = 0.25 if "ritual_boost" in effects else 0.15
                         if random.random() < ritual_chance:
-                            # Build pool of all resources from all guilds
                             all_resources = []
                             for g_cfg in GUILDS.values():
                                 all_resources.extend(g_cfg.get("resources", []))
-                            # Remove duplicates
                             all_resources = list(set(all_resources))
 
-                            # Pick a random resource and quantity
                             ritual_resource = random.choice(all_resources)
                             mn, mx = BASE_GATHER.get(ritual_resource, (1, 3))
                             ritual_qty = random.randint(mn, mx)
 
-                            # Bonus: if ritual_cursed upgrade, get slightly more
                             if "ritual_cursed" in effects:
                                 ritual_qty = int(ritual_qty * 1.5) + 1
 
@@ -160,8 +156,6 @@ class GatherCog(commands.Cog):
                             special_msg = f"\n🕯️ **RITUAL!** Dark forces grant you {ritual_qty}x {r_emoji} {r_name}!"
 
                     elif player["class"] == "Executioner":
-                        # Precision: max roll on one (or both with upgrade) resource
-                        precision_both = "precision_double" in effects
                         special_msg = "\n⚙️ *Precision strike!*"
 
                     # ── Roll resources (guild resources only) ─────────────────
@@ -172,7 +166,6 @@ class GatherCog(commands.Cog):
                         mn, mx   = BASE_GATHER.get(item_id, (1, 4))
                         bonus    = bonuses.get(item_id, 1.0)
 
-                        # Executioner precision: max roll
                         if player["class"] == "Executioner":
                             if i == 0 or "precision_double" in effects:
                                 base_qty = mx
@@ -203,7 +196,15 @@ class GatherCog(commands.Cog):
 
                     set_cooldown(player, "gather")
                     player["stats"]["total_gathers"] += 1
-                    levelled = add_xp(player, XP_PER_GATHER, XP_PER_LEVEL)
+
+                    # ── XP — apply xp_multiplier if active ───────────────────
+                    xp_to_award = XP_PER_GATHER
+                    xp_boost_msg = ""
+                    if "xp_multiplier" in active_effects:
+                        xp_to_award = int(xp_to_award * active_effects.pop("xp_multiplier"))
+                        xp_boost_msg = f" *(+20% XP from Meat Stew!)*"
+
+                    levelled = add_xp(player, xp_to_award, XP_PER_LEVEL)
                     save_data(data)
 
                 # ── Build response (outside lock) ─────────────────────────────
@@ -220,6 +221,8 @@ class GatherCog(commands.Cog):
                     f"({player['class']}) gathered: **{result_str}**"
                     f"{special_msg}"
                 )
+                if xp_boost_msg:
+                    msg += f"\n✨ {xp_to_award} XP earned{xp_boost_msg}"
                 if splash_msg:
                     msg += splash_msg
                 if levelled:
@@ -277,18 +280,6 @@ class GatherCog(commands.Cog):
                         )
                         return
 
-                    # Cooldown — reduced if Club Soda has craft_speed upgrade
-                    craft_cd = COOLDOWNS["craft"]
-                    if player["guild"]:
-                        effects = get_guild_effects(data, player["guild"])
-                        if "craft_speed" in effects and player["guild"] == "club_soda":
-                            craft_cd = 180
-
-                    remaining = cooldown_remaining(player, "craft", craft_cd)
-                    if remaining > 0 and not is_super(ctx):
-                        await ctx.send(f"⏳ Craft cooldown: **{fmt_time(remaining)}** remaining.")
-                        return
-
                     # Check ingredients
                     for need_item, qty in recipe["needs"].items():
                         if player["inventory"].get(need_item, 0) < qty:
@@ -302,7 +293,6 @@ class GatherCog(commands.Cog):
                         remove_item(player, need_item, qty)
 
                     add_item(player, matched_id, 1)
-                    set_cooldown(player, "craft")
                     save_data(data)
 
                 result_item = ITEMS.get(matched_id, {"name": matched_id, "emoji": "✨"})

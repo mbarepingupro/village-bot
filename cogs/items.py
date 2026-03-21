@@ -126,14 +126,14 @@ def apply_golden_herring(player: dict, data: dict) -> str:
 
 
 def apply_gather_boost(player: dict, data: dict) -> str:
-    """50% gather bonus on next gather — effect tag stored on protein_shake item."""
+    """50% gather bonus on next gather."""
     player.setdefault("active_effects", {})
     player["active_effects"]["gather_multiplier"] = 1.5
     return "🥤 **Protein Shake!** Your next `!gather` gives +50% resources!"
 
 
 def apply_triple_gather(player: dict, data: dict) -> str:
-    """2x gather for next 3 gathers — effect tag stored on crystal_potion item."""
+    """2x gather for next 3 gathers."""
     player.setdefault("active_effects", {})
     player["active_effects"]["crystal_boost_remaining"] = 3
     return "💎 **Crystal Potion!** Your next **3 gathers** yield 2x resources!"
@@ -146,10 +146,11 @@ def apply_wild_floor_once(player: dict, data: dict) -> str:
     return "✨ **Sequin Charm!** Your next Wild Roll will be at least 1x!"
 
 
-def apply_craft_reset(player: dict, data: dict) -> str:
-    """Meat stew — reset craft cooldown immediately."""
-    player["cooldowns"]["craft"] = 0
-    return "🍲 **Meat Stew consumed!** Your craft cooldown has been reset!"
+def apply_xp_boost(player: dict, data: dict) -> str:
+    """Meat stew — +20% XP on next gather or contribution."""
+    player.setdefault("active_effects", {})
+    player["active_effects"]["xp_multiplier"] = 1.2
+    return "🍲 **Meat Stew consumed!** Your next gather or contribution gives **+20% XP**!"
 
 
 # ── Effect registry ───────────────────────────────────────────────────────────
@@ -168,7 +169,7 @@ EFFECTS = {
     "protein_shake":    apply_protein_shake,
     "gather_boost":     apply_gather_boost,
     "wild_floor_once":  apply_wild_floor_once,
-    "craft_reset":      apply_craft_reset,
+    "xp_boost":         apply_xp_boost,
 }
 
 ITEM_EFFECTS = {
@@ -183,7 +184,7 @@ ITEM_EFFECTS = {
     "crystal_potion":       "triple_gather",
     "protein_shake":        "gather_boost",
     "sequin_charm":         "wild_floor_once",
-    "meat_stew":            "craft_reset",
+    "meat_stew":            "xp_boost",
 }
 
 

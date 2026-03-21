@@ -9,10 +9,10 @@ Commands:
 
 import discord
 from discord.ext import commands
-from config import GUILDS, GUILD_UPGRADES, ITEMS
+from config import GUILDS, GUILD_UPGRADES, ITEMS, XP_PER_CONTRIBUTION, XP_PER_LEVEL
 from cogs.data import (
     load_data, save_data, get_player,
-    add_item, remove_item, data_lock, user_lock, is_super
+    add_item, remove_item, add_xp, data_lock, user_lock, is_super
 )
 
 
@@ -236,7 +236,6 @@ class GuildCog(commands.Cog):
                         aliases = [
                             item_id.lower(),
                             item_def["name"].lower(),
-                            # short alias: first word of name
                             item_def["name"].lower().split()[0],
                         ]
                         if item_name in aliases:
@@ -288,14 +287,28 @@ class GuildCog(commands.Cog):
                     )
 
                     unlock_msg = check_and_unlock(guild_key, guild_state)
+
+                    # ── Award XP scaled to qty donated ────────────────────────
+                    xp_to_award = qty * XP_PER_CONTRIBUTION
+                    xp_boost_msg = ""
+                    active_effects = player.get("active_effects", {})
+                    if "xp_multiplier" in active_effects:
+                        xp_to_award = int(xp_to_award * active_effects.pop("xp_multiplier"))
+                        xp_boost_msg = " *(+20% XP from Meat Stew!)*"
+
+                    levelled = add_xp(player, xp_to_award, XP_PER_LEVEL)
+
                     save_data(data)
 
                 item_def = ITEMS[matched_id]
                 msg = (
                     f"🤝 **{ctx.author.display_name}** donated "
                     f"**{qty}x {item_def['emoji']} {item_def['name']}** "
-                    f"to **{g['display_name']}**!"
+                    f"to **{g['display_name']}**!\n"
+                    f"✨ +{xp_to_award} XP{xp_boost_msg}"
                 )
+                if levelled:
+                    msg += f"\n⬆️ **LEVEL UP! Now level {player['level']}!**"
                 if unlock_msg:
                     msg += f"\n\n{unlock_msg}"
                 await ctx.send(msg)
@@ -339,7 +352,6 @@ class GuildCog(commands.Cog):
         """Show upgrade tiers and costs for a guild. Usage: !upgrades horny jail"""
         try:
             if guild_name is None:
-                # Show all guilds with full upgrade detail — split into multiple messages if needed
                 data = load_data()
                 messages = []
 
@@ -368,7 +380,6 @@ class GuildCog(commands.Cog):
                         lines.append(f"   *{upgrade['description']}*")
                         lines.append(f"   Cost: {cost_str}")
 
-                        # Show progress bar for current tier
                         if i == current_tier:
                             for item_id, qty_needed in upgrade["cost"].items():
                                 item     = ITEMS.get(item_id, {"name": item_id, "emoji": "❓"})
@@ -382,7 +393,6 @@ class GuildCog(commands.Cog):
 
                 save_data(data)
 
-                # Send each guild as a separate message to avoid Discord 2000 char limit
                 await ctx.send("**🔨 Guild Upgrade Board**\n")
                 for msg in messages:
                     await ctx.send(msg)
@@ -430,7 +440,6 @@ class GuildCog(commands.Cog):
                     f"   Cost: {cost_str}\n"
                 )
 
-                # Show pool progress if this is the current tier
                 if i == current_tier:
                     pool = guild_state["pool"]
                     lines.append("   **Progress:**")
