@@ -36,7 +36,7 @@ DAILY_RESET_TZ = "Europe/Berlin"
 # ── Cooldowns (in seconds) ────────────────────────────────────────────────────
 COOLDOWNS = {
     "gather": 3600,   # 1 hour
-    "craft":  300,    # 5 minutes
+    # craft has no cooldown
     "loot":   3600,   # once per loot session
 }
 
@@ -338,8 +338,8 @@ ITEMS = {
     },
     "meat_stew": {
         "name": "Meat Stew", "emoji": "🍲",
-        "type": "consumable", "effect": "craft_reset",
-        "description": "Resets your craft cooldown immediately.", "tradeable": True,
+        "type": "consumable", "effect": "xp_boost",
+        "description": "+20% XP on your next gather or contribution.", "tradeable": True,
     },
 
     # ── Special / loot exclusives ──────────────────────────────────────────────
@@ -559,7 +559,7 @@ RECIPES = {
     "protein_shake": {
         "needs":      {"egg": 5, "fur": 3},
         "class_only": None,
-        "description": "5 eggs + 3 fur → Scrambled Armor (+50% next gather)",
+        "description": "5 eggs + 3 fur → Protein Shake (+50% next gather)",
     },
     "crystal_potion": {
         "needs":      {"soul_shard": 3, "alcohol": 2},
@@ -574,7 +574,7 @@ RECIPES = {
     "meat_stew": {
         "needs":      {"meat": 4, "fish": 2},
         "class_only": None,
-        "description": "4 polar bear meat + 2 fish → Meat Stew (resets craft cooldown)",
+        "description": "4 meat + 2 fish → Meat Stew (XP boost on next gather or contribution)",
     },
 }
 
@@ -629,4 +629,5 @@ SHOP = {
 XP_PER_GATHER       = 10
 XP_PER_LOOT         = 25
 XP_PER_LEVEL        = 100
-LEVEL_GATHER_BONUS  = 0.02   # +2% per level to all guild resources
+XP_PER_CONTRIBUTION = 1     # awarded per item donated (scaled to qty)
+LEVEL_GATHER_BONUS  = 0.02  # +2% per level to all guild resources
