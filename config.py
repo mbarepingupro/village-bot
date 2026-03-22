@@ -1,12 +1,14 @@
 """
 config.py — All customizable settings live here.
 =================================================
-To add a new guild:        add an entry to GUILDS dict below.
-To add a new item:         add an entry to ITEMS dict below.
-To add a new upgrade:      add an entry to GUILD_UPGRADES dict below.
-To change cooldowns:       edit the COOLDOWNS section.
-To change sell prices:     edit SELL_PRICES.
-To change shop listings:   edit SHOP.
+Village Bot v2 — Cosmetic-focused redesign.
+
+The game loop: join guild → gather resources → earn loot tokens on stream → craft cosmetics.
+
+To add a new guild:      add an entry to GUILDS dict below.
+To add a new item:       add an entry to ITEMS dict below.
+To add a new cosmetic:   add to ITEMS + add a recipe to RECIPES.
+To change cooldowns:     edit the COOLDOWNS section.
 """
 
 import os
@@ -18,42 +20,36 @@ DATA_FILE        = "/app/data/village_data.json"
 BOT_CHANNEL_NAME = ""   # set to your channel name to restrict commands
 
 # Auto-loot trigger — Streamcord go-live channel
-GO_LIVE_CHANNEL  = "🔴-live-now"           # Streamcord go-live channel
-GO_LIVE_TRIGGER  = "twitch.tv/mbarepingu"   # string to match in the message
-VILLAGE_CHANNEL  = "🛖🧊-penguin-village"    # village bot channel
-TRADE_CHANNEL    = "🤝-village-trade"          # dedicated trade channel
+GO_LIVE_CHANNEL  = "🔴-live-now"
+GO_LIVE_TRIGGER  = "twitch.tv/mbarepingu"
+VILLAGE_CHANNEL  = "🛖🧊-penguin-village"
 
-# Roles allowed to run mod commands (!startloot, !addgold, etc.)
+# Roles
 MOD_ROLE_NAMES = ["Moderator", "Mod", "streamer"]
-
-# Roles that bypass all cooldowns and restrictions (for testing)
-SUPER_ROLES = ["streamer"]
+SUPER_ROLES    = ["streamer"]
 
 # ── Timezone for daily reset ──────────────────────────────────────────────────
-# Guild switch resets daily at 00:00 in this timezone
 DAILY_RESET_TZ = "Europe/Berlin"
 
 # ── Cooldowns (in seconds) ────────────────────────────────────────────────────
 COOLDOWNS = {
     "gather": 3600,   # 1 hour
-    # craft has no cooldown
-    "loot":   3600,   # once per loot session
 }
 
-LOOT_WINDOW_SECONDS = 600   # loot window open for 10 min
+# ── Loot drops ────────────────────────────────────────────────────────────────
+LOOT_WINDOW_SECONDS = 1800          # 30 minutes
+LOOT_TOKEN_RANGE    = (1, 5)        # random tokens per claim
+LOOT_RESOURCE_BONUS = (2, 5)        # bonus guild resources per claim
+
+# ── XP & Levels ───────────────────────────────────────────────────────────────
+XP_PER_GATHER      = 10
+XP_PER_LOOT        = 25
+XP_PER_LEVEL       = 100
+LEVEL_GATHER_BONUS = 0.02   # +2% per level to all guild resources
 
 # ── Guilds ────────────────────────────────────────────────────────────────────
-# Fields:
-#   emoji         : displayed everywhere
-#   display_name  : full name shown to users
-#   class_name    : job title members get
-#   description   : shown in !join list
-#   resources     : list of item_ids this guild gathers (exactly 2)
-#   gather_bonus  : item_id -> multiplier applied on top of base gather
-#   special       : unique mechanic description
-#   loot_item     : exclusive item from loot drops
-#
-# ➕ To add a new guild: copy a block, fill in the fields, done.
+# Each guild has 2 resources and a unique gathering gimmick.
+# No upgrade system — class gimmicks are always active.
 
 GUILDS = {
     "horny_jail": {
@@ -63,8 +59,7 @@ GUILDS = {
         "description":  "Chaos reigns. Eggs and wood from mayhem.",
         "resources":    ["egg", "wood"],
         "gather_bonus": {"egg": 1.8, "wood": 1.5},
-        "special":      "working HARD: 20% chance to double all resources on gather",
-        "loot_item":    "get_out_of_jail_card",
+        "special":      "Chaos Roll: 20% chance to double all resources on gather",
     },
     "sea_lion_pit": {
         "emoji":        "🦭",
@@ -74,17 +69,15 @@ GUILDS = {
         "resources":    ["fish", "bone"],
         "gather_bonus": {"fish": 2.0, "bone": 1.8},
         "special":      "Splash: nearby players get +2 fish when you gather",
-        "loot_item":    "golden_herring",
     },
     "club_soda": {
         "emoji":        "🥤",
         "display_name": "Club Soda",
         "class_name":   "Mixologist",
-        "description":  "Brew consumable buffs. Herbs and alcohol.",
+        "description":  "Brew masters. Herbs and alcohol.",
         "resources":    ["herb", "alcohol"],
         "gather_bonus": {"herb": 1.8, "alcohol": 1.6},
-        "special":      "Brew: only class that can craft potions and buffs",
-        "loot_item":    "mystery_potion",
+        "special":      "Brew Bonus: +30% to herb and alcohol yields",
     },
     "the_circus": {
         "emoji":        "🎪",
@@ -92,19 +85,17 @@ GUILDS = {
         "class_name":   "Performer",
         "description":  "Wild card. Candies and confetti everywhere.",
         "resources":    ["candy", "confetti"],
-        "gather_bonus": {},   # wild roll — bonuses are random
+        "gather_bonus": {},
         "special":      "Wild Roll: gather result is 0x to 3x at random",
-        "loot_item":    "trick_coin",
     },
     "the_barracks": {
         "emoji":        "⚔️",
         "display_name": "The Barracks",
         "class_name":   "Soldier",
-        "description":  "Disciplined warriors. Polar bear meat and fur.",
+        "description":  "Disciplined warriors. Meat and fur.",
         "resources":    ["meat", "fur"],
         "gather_bonus": {"meat": 1.8, "fur": 1.6},
         "special":      "Ration: gather cooldown reduced to 45 min instead of 1 hour",
-        "loot_item":    "ration_pack",
     },
     "cursed_temple": {
         "emoji":        "🏚️",
@@ -113,8 +104,7 @@ GUILDS = {
         "description":  "Dark rituals. Candles and soul shards.",
         "resources":    ["candle", "soul_shard"],
         "gather_bonus": {"candle": 1.8, "soul_shard": 1.5},
-        "special":      "Ritual: 15% chance to find a random resource from any guild on gather",
-        "loot_item":    "cursed_relic",
+        "special":      "Ritual: 15% chance to find a random resource from any guild",
     },
     "the_guillotine": {
         "emoji":        "🪓",
@@ -124,404 +114,98 @@ GUILDS = {
         "resources":    ["metal", "blood_bean"],
         "gather_bonus": {"metal": 1.8, "blood_bean": 1.6},
         "special":      "Precision: always get max roll on one resource per gather",
-        "loot_item":    "executioner_hood",
     },
-
-    # ── ADD NEW GUILDS BELOW THIS LINE ────────────────────────────────────────
-    # "my_building": {
-    #     "emoji":        "🏠",
-    #     "display_name": "My Building",
-    #     "class_name":   "ClassName",
-    #     "description":  "What this guild does.",
-    #     "resources":    ["item_id_1", "item_id_2"],
-    #     "gather_bonus": {"item_id_1": 1.5},
-    #     "special":      "Describe the unique mechanic",
-    #     "loot_item":    "item_id_here",
-    # },
-}
-
-# ── Guild upgrades ────────────────────────────────────────────────────────────
-# Shared upgrades — the whole guild contributes resources to unlock.
-# Costs use resources from OTHER guilds to encourage switching.
-#
-# Fields per upgrade:
-#   name        : display name
-#   description : what the upgrade does (flavor + mechanic tag)
-#   cost        : dict of item_id -> qty needed in the pool
-#   effect      : string tag used in gather.py to apply the bonus
-#
-# ➕ To add a new upgrade tier: add another entry to the list.
-
-GUILD_UPGRADES = {
-    "horny_jail": [
-        {
-            "name":        "Reinforced Bars",
-            "description": "Chaos Roll chance increases to 30%.",
-            "cost":        {"fish": 100, "bone": 100},
-            "effect":      "chaos_boost",
-        },
-        {
-            "name":        "Morning Wood",
-            "description": "Chaos Roll now gives 3x instead of 2x.",
-            "cost":        {"soul_shard": 200, "candle": 200},
-            "effect":      "chaos_triple",
-        },
-    ],
-    "sea_lion_pit": [
-        {
-            "name":        "Fish Ladder",
-            "description": "Splash now hits 2 players instead of 1.",
-            "cost":        {"egg": 100, "wood": 100},
-            "effect":      "splash_double",
-        },
-        {
-            "name":        "Coral Throne",
-            "description": "Splash gives +3 fish instead of +2.",
-            "cost":        {"herb": 200, "alcohol": 200},
-            "effect":      "splash_triple",
-        },
-    ],
-    "club_soda": [
-        {
-            "name":        "Herb Garden",
-            "description": "+30% to herb and alcohol yields on every gather.",
-            "cost":        {"candy": 100, "confetti": 100},
-            "effect":      "mixologist_gather_boost",
-        },
-        {
-            "name":        "Secret Menu",
-            "description": "5% chance to craft double output with same ingredients.",
-            "cost":        {"metal": 200, "blood_bean": 200},
-            "effect":      "double_craft_chance",
-        },
-    ],
-    "the_circus": [
-        {
-            "name":        "Big Top",
-            "description": "Wild Roll minimum is now 0.5x instead of 0x.",
-            "cost":        {"fish": 100, "bone": 100},
-            "effect":      "wild_floor",
-        },
-        {
-            "name":        "Sequin Vault",
-            "description": "3x outcome is twice as likely.",
-            "cost":        {"meat": 200, "fur": 200},
-            "effect":      "wild_ceiling",
-        },
-    ],
-    "the_barracks": [
-        {
-            "name":        "Drill Grounds",
-            "description": "Gather cooldown drops to 30 minutes.",
-            "cost":        {"soul_shard": 100, "candle": 100},
-            "effect":      "barracks_speed",
-        },
-        {
-            "name":        "Armory",
-            "description": "+20% to all resources gathered.",
-            "cost":        {"egg": 200, "wood": 200},
-            "effect":      "armory_bonus",
-        },
-    ],
-    "cursed_temple": [
-        {
-            "name":        "Bone Altar",
-            "description": "Ritual chance increases to 25%.",
-            "cost":        {"meat": 100, "fur": 100},
-            "effect":      "ritual_boost",
-        },
-        {
-            "name":        "Candle Array",
-            "description": "Ritual can now find cursed exclusive items.",
-            "cost":        {"metal": 200, "blood_bean": 200},
-            "effect":      "ritual_cursed",
-        },
-    ],
-    "the_guillotine": [
-        {
-            "name":        "Sharpening Stone",
-            "description": "Precision now applies to both resources.",
-            "cost":        {"candle": 100, "soul_shard": 100},
-            "effect":      "precision_double",
-        },
-        {
-            "name":        "Execution Chamber",
-            "description": "+25% to metal and blood bean yields.",
-            "cost":        {"fish": 200, "herb": 200},
-            "effect":      "execution_bonus",
-        },
-    ],
 }
 
 # ── Items ─────────────────────────────────────────────────────────────────────
-# ➕ To add a new item: copy a block and fill it in.
 
 ITEMS = {
-    # ── Guild resources ────────────────────────────────────────────────────────
-    "egg": {
-        "name": "Egg", "emoji": "🥚",
-        "type": "resource", "description": "Fragile but valuable.", "tradeable": True,
-    },
-    "wood": {
-        "name": "Wood", "emoji": "🪵",
-        "type": "resource", "description": "Basic building material.", "tradeable": True,
-    },
-    "fish": {
-        "name": "Fish", "emoji": "🐟",
-        "type": "resource", "description": "Slippery. Good for trades.", "tradeable": True,
-    },
-    "bone": {
-        "name": "Bone", "emoji": "🦴",
-        "type": "resource", "description": "From the deep. Useful for dark crafts.", "tradeable": True,
-    },
-    "herb": {
-        "name": "Herb", "emoji": "🌿",
-        "type": "resource", "description": "Used in potions and brews.", "tradeable": True,
-    },
-    "alcohol": {
-        "name": "Alcohol", "emoji": "🍺",
-        "type": "resource", "description": "Distilled in Club Soda's back room.", "tradeable": True,
-    },
-    "candy": {
-        "name": "Candy", "emoji": "🍬",
-        "type": "resource", "description": "Sticky and sweet. The Circus runs on these.", "tradeable": True,
-    },
-    "confetti": {
-        "name": "Confetti", "emoji": "🎊",
-        "type": "resource", "description": "It gets everywhere.", "tradeable": True,
-    },
-    "meat": {
-        "name": "Meat", "emoji": "🥩",
-        "type": "resource", "description": "Tough but nutritious.", "tradeable": True,
-    },
-    "fur": {
-        "name": "Fur", "emoji": "🪶",
-        "type": "resource", "description": "Warm and tradeable.", "tradeable": True,
-    },
-    "candle": {
-        "name": "Candle", "emoji": "🕯️",
-        "type": "resource", "description": "Burns with an eerie light.", "tradeable": True,
-    },
-    "soul_shard": {
-        "name": "Soul Shard", "emoji": "🔮",
-        "type": "resource", "description": "A fragment of something that shouldn't exist.", "tradeable": False,
-    },
-    "metal": {
-        "name": "Metal", "emoji": "⚙️",
-        "type": "resource", "description": "Cold and sharp.", "tradeable": True,
-    },
-    "blood_bean": {
-        "name": "Blood Bean", "emoji": "🫘",
-        "type": "resource", "description": "Don't ask what it's made of.", "tradeable": False,
-    },
+    # ── Resources ──────────────────────────────────────────────────────────────
+    "egg":        {"name": "Egg",        "emoji": "🥚", "type": "resource", "description": "Fragile but valuable."},
+    "wood":       {"name": "Wood",       "emoji": "🪵", "type": "resource", "description": "Basic building material."},
+    "fish":       {"name": "Fish",       "emoji": "🐟", "type": "resource", "description": "Slippery. Good for trades."},
+    "bone":       {"name": "Bone",       "emoji": "🦴", "type": "resource", "description": "From the deep."},
+    "herb":       {"name": "Herb",       "emoji": "🌿", "type": "resource", "description": "Used in potions and brews."},
+    "alcohol":    {"name": "Alcohol",    "emoji": "🍺", "type": "resource", "description": "Distilled in Club Soda."},
+    "candy":      {"name": "Candy",      "emoji": "🍬", "type": "resource", "description": "Sticky and sweet."},
+    "confetti":   {"name": "Confetti",   "emoji": "🎊", "type": "resource", "description": "It gets everywhere."},
+    "meat":       {"name": "Meat",       "emoji": "🥩", "type": "resource", "description": "Tough but nutritious."},
+    "fur":        {"name": "Fur",        "emoji": "🪶", "type": "resource", "description": "Warm and useful."},
+    "candle":     {"name": "Candle",     "emoji": "🕯️", "type": "resource", "description": "Burns with an eerie light."},
+    "soul_shard": {"name": "Soul Shard", "emoji": "🔮", "type": "resource", "description": "A fragment of something dark."},
+    "metal":      {"name": "Metal",      "emoji": "⚙️", "type": "resource", "description": "Cold and sharp."},
+    "blood_bean": {"name": "Blood Bean", "emoji": "🫘", "type": "resource", "description": "Don't ask what it's made of."},
 
-    # ── Consumables ────────────────────────────────────────────────────────────
-    "mystery_potion": {
-        "name": "Mystery Potion", "emoji": "🧪",
-        "type": "consumable", "effect": "mystery",
-        "description": "Unknown effect. Use at your own risk.", "tradeable": True,
-    },
-    "bone_brew": {
-        "name": "Bone Brew", "emoji": "🍵",
-        "type": "consumable", "effect": "cooldown_reset",
-        "description": "Resets your gather cooldown immediately.", "tradeable": True,
-    },
-    "protein_shake": {
-        "name": "Protein Shake", "emoji": "🥤",
-        "type": "consumable", "effect": "gather_boost",
-        "description": "+50% resources on your next gather.", "tradeable": True,
-    },
-    "crystal_potion": {
-        "name": "Crystal Potion", "emoji": "💎",
-        "type": "consumable", "effect": "triple_gather",
-        "description": "2x gather for your next 3 gathers. Mixologist only.", "tradeable": True,
-    },
-    "meat_stew": {
-        "name": "Meat Stew", "emoji": "🍲",
-        "type": "consumable", "effect": "xp_boost",
-        "description": "+20% XP on your next gather or contribution.", "tradeable": True,
-    },
+    # ── Loot Token ─────────────────────────────────────────────────────────────
+    "loot_token": {"name": "Loot Token", "emoji": "🎟️", "type": "resource", "description": "Earned by watching the stream. Required for crafting."},
 
-    # ── Special / loot exclusives ──────────────────────────────────────────────
-    "get_out_of_jail_card": {
-        "name": "Get Out of Jail Card", "emoji": "🃏",
-        "type": "consumable", "effect": "cooldown_reset",
-        "description": "Resets your gather cooldown once.", "tradeable": False,
-    },
-    "golden_herring": {
-        "name": "Golden Herring", "emoji": "🥇",
-        "type": "consumable", "effect": "golden_herring",
-        "description": "Worth 10 fish. Very shiny.", "tradeable": True,
-    },
-    "trick_coin": {
-        "name": "Trick Coin", "emoji": "🪙",
-        "type": "consumable", "effect": "trick_coin",
-        "description": "Heads = double next gather. Tails = nothing.", "tradeable": False,
-    },
-    "ration_pack": {
-        "name": "Ration Pack", "emoji": "🎒",
-        "type": "consumable", "effect": "cooldown_reset",
-        "description": "Emergency supplies. Resets gather cooldown.", "tradeable": False,
-    },
-    "cursed_relic": {
-        "name": "Cursed Relic", "emoji": "☠️",
-        "type": "consumable", "effect": "mystery",
-        "description": "A relic from the temple. Its power is unknown.", "tradeable": False,
-    },
-    "executioner_hood": {
-        "name": "Executioner's Hood", "emoji": "🪖",
-        "type": "cosmetic", "slot": "hat",
-        "description": "Worn by those who carry out the sentence.", "tradeable": False,
-    },
+    # ══════════════════════════════════════════════════════════════════════════
+    # COSMETICS — COMMON TIER (1 loot token + single-guild resources)
+    # ══════════════════════════════════════════════════════════════════════════
 
-    # ── Crafted consumables ────────────────────────────────────────────────────
-    "sequin_charm": {
-        "name": "Sequin Charm", "emoji": "✨",
-        "type": "consumable", "effect": "wild_floor_once",
-        "description": "Wild Roll minimum is 1x for one gather.", "tradeable": False,
-    },
+    # Guild scarves (outfit slot) — one per guild
+    "jail_scarf":        {"name": "Jail Scarf",        "emoji": "🧣", "type": "cosmetic", "slot": "outfit", "description": "Red & white stripes. Crime pays."},
+    "sea_lion_scarf":    {"name": "Sea Lion Scarf",    "emoji": "🧣", "type": "cosmetic", "slot": "outfit", "description": "Blue wave pattern. Smells like fish."},
+    "soda_scarf":        {"name": "Soda Scarf",        "emoji": "🧣", "type": "cosmetic", "slot": "outfit", "description": "Green and bubbly. Fizzy."},
+    "circus_scarf":      {"name": "Circus Scarf",      "emoji": "🧣", "type": "cosmetic", "slot": "outfit", "description": "Rainbow party scarf. Spectacular."},
+    "soldier_scarf":     {"name": "Soldier Scarf",     "emoji": "🧣", "type": "cosmetic", "slot": "outfit", "description": "Camo pattern. Disciplined."},
+    "cultist_scarf":     {"name": "Cultist Scarf",     "emoji": "🧣", "type": "cosmetic", "slot": "outfit", "description": "Dark purple. Whispers at night."},
+    "executioner_scarf": {"name": "Executioner Scarf", "emoji": "🧣", "type": "cosmetic", "slot": "outfit", "description": "Iron grey. Final fashion."},
 
-    # ── Tools ──────────────────────────────────────────────────────────────────
-    "iron_axe": {
-        "name": "Iron Axe", "emoji": "🪓",
-        "type": "tool", "slot": "tool",
-        "description": "+50% wood on every gather while equipped.",
-        "tradeable": False, "bonus": {"wood": 0.5},
-    },
-    "fishing_rod": {
-        "name": "Fishing Rod", "emoji": "🎣",
-        "type": "tool", "slot": "tool",
-        "description": "+50% fish on every gather while equipped.",
-        "tradeable": False, "bonus": {"fish": 0.5},
-    },
-    "pickaxe": {
-        "name": "Pickaxe", "emoji": "⛏️",
-        "type": "tool", "slot": "tool",
-        "description": "+50% metal on every gather while equipped.",
-        "tradeable": False, "bonus": {"metal": 0.5},
-    },
+    # Guild accessories/hats — one per guild
+    "egg_crown":     {"name": "Egg Crown",     "emoji": "🥚", "type": "cosmetic", "slot": "hat",       "description": "A cracked egg on your head. Bold."},
+    "fish_necklace": {"name": "Fish Necklace", "emoji": "🐟", "type": "cosmetic", "slot": "accessory", "description": "Fish bones strung together. Elegant."},
+    "herb_wreath":   {"name": "Herb Wreath",   "emoji": "🌿", "type": "cosmetic", "slot": "hat",       "description": "Leafy flower crown. Fragrant."},
+    "candy_cane":    {"name": "Candy Cane",     "emoji": "🍭", "type": "cosmetic", "slot": "accessory", "description": "A held candy cane. Festive."},
+    "dog_tag":       {"name": "Dog Tag",        "emoji": "🪪", "type": "cosmetic", "slot": "accessory", "description": "Military dog tag. Earned."},
+    "candle_hat":    {"name": "Candle Hat",     "emoji": "🕯️", "type": "cosmetic", "slot": "hat",       "description": "Melting candle on your head. Lit."},
+    "gear_monocle":  {"name": "Gear Monocle",   "emoji": "🔍", "type": "cosmetic", "slot": "accessory", "description": "Steampunk monocle. Distinguished."},
 
-    # ── Cosmetics ──────────────────────────────────────────────────────────────
-    "jester_hat": {
-        "name": "Jester Hat", "emoji": "🎭",
-        "type": "cosmetic", "slot": "hat",
-        "description": "For the true performer.", "tradeable": False,
-    },
-    "inmate_outfit": {
-        "name": "Inmate Outfit", "emoji": "👔",
-        "type": "cosmetic", "slot": "outfit",
-        "description": "Stripes. Classic.", "tradeable": False,
-    },
-    "sea_lion_hood": {
-        "name": "Sea Lion Hood", "emoji": "🦭",
-        "type": "cosmetic", "slot": "hat",
-        "description": "Honk.", "tradeable": False,
-    },
-    "soldier_helmet": {
-        "name": "Soldier Helmet", "emoji": "⛑️",
-        "type": "cosmetic", "slot": "hat",
-        "description": "Worn by the disciplined.", "tradeable": False,
-    },
-    "cultist_robe": {
-        "name": "Cultist Robe", "emoji": "🌑",
-        "type": "cosmetic", "slot": "outfit",
-        "description": "For the devoted.", "tradeable": False,
-    },
+    # ══════════════════════════════════════════════════════════════════════════
+    # COSMETICS — RARE TIER (3 loot tokens + cross-guild resources)
+    # ══════════════════════════════════════════════════════════════════════════
 
-    # ── Stream unlocks ─────────────────────────────────────────────────────────
-    "stream_command_slot": {
-        "name": "Stream Command Slot", "emoji": "📺",
-        "type": "stream_unlock",
-        "description": "Unlocks a custom stream command. Activate with the streamer.",
-        "tradeable": False,
-    },
+    # Horny Jail rare set
+    "inmate_cap":      {"name": "Inmate Cap",      "emoji": "🧢", "type": "cosmetic", "slot": "hat",    "description": "Black & white prisoner cap. Iconic."},
+    "jail_jumpsuit":   {"name": "Jail Jumpsuit",   "emoji": "👔", "type": "cosmetic", "slot": "outfit", "description": "Orange jumpsuit. Classic."},
 
-    # ── Limited edition cosmetics ──────────────────────────────────────────────
-    "penguin_helmet": {
-        "name": "Penguin Helmet", "emoji": "🐧",
-        "type": "cosmetic", "slot": "hat",
-        "description": "Awarded to the first penguins of the village. Rare.",
-        "tradeable": False,
-    },
+    # Sea Lion Pit rare set
+    "sea_lion_crown":  {"name": "Sea Lion Crown",  "emoji": "👑", "type": "cosmetic", "slot": "hat",    "description": "Shell & coral crown. Majestic."},
+    "sailor_coat":     {"name": "Sailor Coat",     "emoji": "🧥", "type": "cosmetic", "slot": "outfit", "description": "Navy blue coat. Seaworthy."},
 
-    "egg_basket": {
-        "name": "Egg Basket", "emoji": "🧺",
-        "type": "tool", "slot": "tool",
-        "description": "+50% eggs on every gather while equipped.",
-        "tradeable": False, "bonus": {"egg": 0.5},
-    },
-    "bone_saw": {
-        "name": "Bone Saw", "emoji": "🪚",
-        "type": "tool", "slot": "tool",
-        "description": "+50% bone on every gather while equipped.",
-        "tradeable": False, "bonus": {"bone": 0.5},
-    },
-    "herb_pouch": {
-        "name": "Herb Pouch", "emoji": "👜",
-        "type": "tool", "slot": "tool",
-        "description": "+50% herbs on every gather while equipped.",
-        "tradeable": False, "bonus": {"herb": 0.5},
-    },
-    "flask": {
-        "name": "Flask", "emoji": "🫙",
-        "type": "tool", "slot": "tool",
-        "description": "+50% alcohol on every gather while equipped.",
-        "tradeable": False, "bonus": {"alcohol": 0.5},
-    },
-    "candy_bag": {
-        "name": "Candy Bag", "emoji": "🎒",
-        "type": "tool", "slot": "tool",
-        "description": "+50% candy on every gather while equipped.",
-        "tradeable": False, "bonus": {"candy": 0.5},
-    },
-    "confetti_cannon": {
-        "name": "Confetti Cannon", "emoji": "🎉",
-        "type": "tool", "slot": "tool",
-        "description": "+50% confetti on every gather while equipped.",
-        "tradeable": False, "bonus": {"confetti": 0.5},
-    },
-    "hunting_knife": {
-        "name": "Hunting Knife", "emoji": "🔪",
-        "type": "tool", "slot": "tool",
-        "description": "+50% meat on every gather while equipped.",
-        "tradeable": False, "bonus": {"meat": 0.5},
-    },
-    "fur_trap": {
-        "name": "Fur Trap", "emoji": "🪤",
-        "type": "tool", "slot": "tool",
-        "description": "+50% fur on every gather while equipped.",
-        "tradeable": False, "bonus": {"fur": 0.5},
-    },
-    "candle_mold": {
-        "name": "Candle Mold", "emoji": "🕯️",
-        "type": "tool", "slot": "tool",
-        "description": "+50% candles on every gather while equipped.",
-        "tradeable": False, "bonus": {"candle": 0.5},
-    },
-    "soul_jar": {
-        "name": "Soul Jar", "emoji": "🫙",
-        "type": "tool", "slot": "tool",
-        "description": "+50% soul shards on every gather while equipped.",
-        "tradeable": False, "bonus": {"soul_shard": 0.5},
-    },
-    "blood_vial": {
-        "name": "Blood Vial", "emoji": "🧪",
-        "type": "tool", "slot": "tool",
-        "description": "+50% blood beans on every gather while equipped.",
-        "tradeable": False, "bonus": {"blood_bean": 0.5},
-    },
+    # Club Soda rare set
+    "bartender_hat":   {"name": "Bartender Hat",   "emoji": "🎩", "type": "cosmetic", "slot": "hat",    "description": "Top hat with a lime. Classy."},
+    "mixologist_apron":{"name": "Mixologist Apron", "emoji": "👨‍🍳", "type": "cosmetic", "slot": "outfit", "description": "Stained bar apron. Professional."},
 
-    # ── ADD NEW ITEMS BELOW THIS LINE ──────────────────────────────────────────
-    # "my_item": {
-    #     "name": "My Item", "emoji": "✨",
-    #     "type": "resource",
-    #     "description": "What it does.", "tradeable": True,
-    # },
+    # Circus rare set
+    "jester_hat":      {"name": "Jester Hat",      "emoji": "🎭", "type": "cosmetic", "slot": "hat",    "description": "Bells and all. Foolish."},
+    "clown_suit":      {"name": "Clown Suit",      "emoji": "🤡", "type": "cosmetic", "slot": "outfit", "description": "Polka dots. Honk honk."},
+
+    # Barracks rare set
+    "soldier_helmet":  {"name": "Soldier Helmet",  "emoji": "⛑️", "type": "cosmetic", "slot": "hat",    "description": "Military helmet. Battle-tested."},
+    "battle_armor":    {"name": "Battle Armor",    "emoji": "🛡️", "type": "cosmetic", "slot": "outfit", "description": "Fur-trimmed armor. Imposing."},
+
+    # Cursed Temple rare set
+    "cultist_hood":    {"name": "Cultist Hood",    "emoji": "🌑", "type": "cosmetic", "slot": "hat",    "description": "Dark hooded cowl. Mysterious."},
+    "dark_robe":       {"name": "Dark Robe",       "emoji": "🖤", "type": "cosmetic", "slot": "outfit", "description": "Full cultist robe. Devoted."},
+
+    # Guillotine rare set
+    "executioner_mask":{"name": "Executioner Mask", "emoji": "🎭", "type": "cosmetic", "slot": "hat",    "description": "Black leather mask. Final."},
+    "iron_suit":       {"name": "Iron Suit",        "emoji": "⚔️", "type": "cosmetic", "slot": "outfit", "description": "Heavy iron plate. Unstoppable."},
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # COSMETICS — LEGENDARY TIER (20 loot tokens + multi-guild resources)
+    # ══════════════════════════════════════════════════════════════════════════
+
+    "golden_crown":      {"name": "Golden Crown",      "emoji": "👑", "type": "cosmetic", "slot": "hat",       "description": "The ultimate flex. Blinding."},
+    "chaos_cloak":       {"name": "Chaos Cloak",        "emoji": "🌈", "type": "cosmetic", "slot": "outfit",    "description": "Shimmering multicolor. You've done it all."},
+    "soul_flame_aura":   {"name": "Soul Flame Aura",    "emoji": "🔥", "type": "cosmetic", "slot": "accessory", "description": "Purple fire surrounds you. Feared."},
+    "rainbow_scarf":     {"name": "Rainbow Scarf",      "emoji": "🏳️‍🌈", "type": "cosmetic", "slot": "outfit",    "description": "Flowing rainbow. Radiant."},
+    "village_elder_staff":{"name": "Village Elder Staff","emoji": "🪄", "type": "cosmetic", "slot": "accessory", "description": "Glowing elder's staff. Respected."},
 }
 
 # ── Gather table ──────────────────────────────────────────────────────────────
 # Base amounts per guild resource before class bonuses.
-# Each guild only rolls its own 2 resources.
 # Format: item_id -> (min, max)
 
 BASE_GATHER = {
@@ -541,93 +225,90 @@ BASE_GATHER = {
     "blood_bean": (1, 3),
 }
 
-# ── Craft recipes ──────────────────────────────────────────────────────────────
-# Format: result_item_id -> {"needs": {item_id: qty}, "class_only": None | "ClassName"}
-# ➕ Add new recipes here.
+# ── Craft recipes ─────────────────────────────────────────────────────────────
+# Every recipe requires loot tokens (earned on stream) + resources.
+#
+# Tiers:
+#   Common    — 1 token  + single-guild resources
+#   Rare      — 3 tokens + cross-guild resources
+#   Legendary — 20 tokens + multi-guild resources
+#
+# Format:
+#   result_item_id -> {
+#       "needs":  {resource: qty, ...},
+#       "tokens": int,           # loot tokens required
+#       "tier":   "common" | "rare" | "legendary",
+#   }
 
 RECIPES = {
-    "mystery_potion": {
-        "needs":      {"herb": 3, "alcohol": 1},
-        "class_only": "Mixologist",
-        "description": "3 herbs + 1 alcohol → Mystery Potion (Mixologist only)",
+    # ── COMMON — Guild Scarves (outfit) ───────────────────────────────────────
+    "jail_scarf":        {"needs": {"egg": 10, "wood": 8},         "tokens": 1, "tier": "common"},
+    "sea_lion_scarf":    {"needs": {"fish": 10, "bone": 8},        "tokens": 1, "tier": "common"},
+    "soda_scarf":        {"needs": {"herb": 10, "alcohol": 8},     "tokens": 1, "tier": "common"},
+    "circus_scarf":      {"needs": {"candy": 10, "confetti": 8},   "tokens": 1, "tier": "common"},
+    "soldier_scarf":     {"needs": {"meat": 10, "fur": 8},         "tokens": 1, "tier": "common"},
+    "cultist_scarf":     {"needs": {"candle": 10, "soul_shard": 8},"tokens": 1, "tier": "common"},
+    "executioner_scarf": {"needs": {"metal": 10, "blood_bean": 8}, "tokens": 1, "tier": "common"},
+
+    # ── COMMON — Guild Accessories/Hats ───────────────────────────────────────
+    "egg_crown":     {"needs": {"egg": 15},    "tokens": 1, "tier": "common"},
+    "fish_necklace": {"needs": {"fish": 15},   "tokens": 1, "tier": "common"},
+    "herb_wreath":   {"needs": {"herb": 15},   "tokens": 1, "tier": "common"},
+    "candy_cane":    {"needs": {"candy": 15},  "tokens": 1, "tier": "common"},
+    "dog_tag":       {"needs": {"meat": 15},   "tokens": 1, "tier": "common"},
+    "candle_hat":    {"needs": {"candle": 15}, "tokens": 1, "tier": "common"},
+    "gear_monocle":  {"needs": {"metal": 15},  "tokens": 1, "tier": "common"},
+
+    # ── RARE — Horny Jail ─────────────────────────────────────────────────────
+    "inmate_cap":    {"needs": {"egg": 20, "wood": 15, "bone": 12},    "tokens": 3, "tier": "rare"},
+    "jail_jumpsuit": {"needs": {"wood": 20, "egg": 15, "fur": 12},     "tokens": 3, "tier": "rare"},
+
+    # ── RARE — Sea Lion Pit ───────────────────────────────────────────────────
+    "sea_lion_crown": {"needs": {"fish": 20, "bone": 15, "metal": 12},  "tokens": 3, "tier": "rare"},
+    "sailor_coat":    {"needs": {"bone": 20, "fish": 15, "herb": 12},   "tokens": 3, "tier": "rare"},
+
+    # ── RARE — Club Soda ──────────────────────────────────────────────────────
+    "bartender_hat":    {"needs": {"herb": 20, "alcohol": 15, "candy": 12},   "tokens": 3, "tier": "rare"},
+    "mixologist_apron": {"needs": {"alcohol": 20, "herb": 15, "egg": 12},     "tokens": 3, "tier": "rare"},
+
+    # ── RARE — The Circus ─────────────────────────────────────────────────────
+    "jester_hat": {"needs": {"candy": 20, "confetti": 15, "candle": 12},   "tokens": 3, "tier": "rare"},
+    "clown_suit": {"needs": {"confetti": 20, "candy": 15, "alcohol": 12}, "tokens": 3, "tier": "rare"},
+
+    # ── RARE — The Barracks ───────────────────────────────────────────────────
+    "soldier_helmet": {"needs": {"meat": 20, "fur": 15, "metal": 12},  "tokens": 3, "tier": "rare"},
+    "battle_armor":   {"needs": {"fur": 20, "meat": 15, "bone": 12},   "tokens": 3, "tier": "rare"},
+
+    # ── RARE — Cursed Temple ──────────────────────────────────────────────────
+    "cultist_hood": {"needs": {"candle": 20, "soul_shard": 15, "confetti": 12}, "tokens": 3, "tier": "rare"},
+    "dark_robe":    {"needs": {"soul_shard": 20, "candle": 15, "herb": 12},     "tokens": 3, "tier": "rare"},
+
+    # ── RARE — The Guillotine ─────────────────────────────────────────────────
+    "executioner_mask": {"needs": {"metal": 20, "blood_bean": 15, "fur": 12},        "tokens": 3, "tier": "rare"},
+    "iron_suit":        {"needs": {"blood_bean": 20, "metal": 15, "soul_shard": 12}, "tokens": 3, "tier": "rare"},
+
+    # ── LEGENDARY ─────────────────────────────────────────────────────────────
+    "golden_crown": {
+        "needs":  {"metal": 30, "fish": 20, "egg": 15},
+        "tokens": 20, "tier": "legendary",
     },
-    "bone_brew": {
-        "needs":      {"bone": 2, "herb": 2},
-        "class_only": None,
-        "description": "2 bones + 2 herbs → Bone Brew (resets gather cooldown)",
+    "chaos_cloak": {
+        "needs":  {"egg": 15, "wood": 15, "fish": 15, "bone": 15, "herb": 15,
+                   "alcohol": 15, "candy": 15, "confetti": 15, "meat": 15,
+                   "fur": 15, "candle": 15, "soul_shard": 15, "metal": 15,
+                   "blood_bean": 15},
+        "tokens": 20, "tier": "legendary",
     },
-    "protein_shake": {
-        "needs":      {"egg": 5, "fur": 3},
-        "class_only": None,
-        "description": "5 eggs + 3 fur → Protein Shake (+50% next gather)",
+    "soul_flame_aura": {
+        "needs":  {"soul_shard": 30, "candle": 25, "blood_bean": 20},
+        "tokens": 20, "tier": "legendary",
     },
-    "crystal_potion": {
-        "needs":      {"soul_shard": 3, "alcohol": 2},
-        "class_only": "Mixologist",
-        "description": "3 soul shards + 2 alcohol → Crystal Potion (2x for 3 gathers, Mixologist only)",
+    "rainbow_scarf": {
+        "needs":  {"candy": 20, "confetti": 20, "herb": 20, "egg": 20},
+        "tokens": 20, "tier": "legendary",
     },
-    "sequin_charm": {
-        "needs":      {"confetti": 4, "candle": 2},
-        "class_only": None,
-        "description": "4 confetti + 2 candles → Sequin Charm (Wild Roll min 1x once)",
-    },
-    "meat_stew": {
-        "needs":      {"meat": 4, "fish": 2},
-        "class_only": None,
-        "description": "4 meat + 2 fish → Meat Stew (XP boost on next gather or contribution)",
+    "village_elder_staff": {
+        "needs":  {"wood": 25, "bone": 25, "metal": 25, "soul_shard": 20},
+        "tokens": 20, "tier": "legendary",
     },
 }
-
-# ── Gold ───────────────────────────────────────────────────────────────────────
-GOLD_LOOT_REWARD = (2.0, 8.0)
-
-SELL_PRICES = {
-    "egg":        0.1,
-    "wood":       0.1,
-    "candy":      0.1,
-    "confetti":   0.1,
-    "fish":       0.2,
-    "bone":       0.3,
-    "herb":       0.3,
-    "meat":       0.4,
-    "fur":        0.4,
-    "alcohol":    0.5,
-    "candle":     0.5,
-    "metal":      0.8,
-    "blood_bean": 1.0,
-    "soul_shard": 1.5,
-}
-
-# ── Shop ───────────────────────────────────────────────────────────────────────
-SHOP = {
-    # ── Tools — level 2 required ──────────────────────────────────────────────
-    "iron_axe":         {"price": 30, "guild_only": None, "min_level": 2},
-    "fishing_rod":      {"price": 30, "guild_only": None, "min_level": 2},
-    "pickaxe":          {"price": 30, "guild_only": None, "min_level": 2},
-    "egg_basket":       {"price": 30, "guild_only": None, "min_level": 2},
-    "bone_saw":         {"price": 30, "guild_only": None, "min_level": 2},
-    "herb_pouch":       {"price": 30, "guild_only": None, "min_level": 2},
-    "flask":            {"price": 30, "guild_only": None, "min_level": 2},
-    "candy_bag":        {"price": 30, "guild_only": None, "min_level": 2},
-    "confetti_cannon":  {"price": 30, "guild_only": None, "min_level": 2},
-    "hunting_knife":    {"price": 30, "guild_only": None, "min_level": 2},
-    "fur_trap":         {"price": 30, "guild_only": None, "min_level": 2},
-    "candle_mold":      {"price": 30, "guild_only": None, "min_level": 2},
-    "soul_jar":         {"price": 30, "guild_only": None, "min_level": 2},
-    "blood_vial":       {"price": 30, "guild_only": None, "min_level": 2},
-    # ── Cosmetics — level 5 required ──────────────────────────────────────────
-    "jester_hat":       {"price": 50, "guild_only": "the_circus",     "min_level": 5},
-    "inmate_outfit":    {"price": 50, "guild_only": "horny_jail",     "min_level": 5},
-    "sea_lion_hood":    {"price": 50, "guild_only": "sea_lion_pit",   "min_level": 5},
-    "soldier_helmet":   {"price": 50, "guild_only": "the_barracks",   "min_level": 5},
-    "cultist_robe":     {"price": 50, "guild_only": "cursed_temple",  "min_level": 5},
-    "executioner_hood": {"price": 50, "guild_only": "the_guillotine", "min_level": 5},
-    # ── ADD NEW SHOP ITEMS BELOW ──────────────────────────────────────────────
-}
-
-# ── XP & Levels ───────────────────────────────────────────────────────────────
-XP_PER_GATHER       = 10
-XP_PER_LOOT         = 25
-XP_PER_LEVEL        = 100
-XP_PER_CONTRIBUTION = 1     # awarded per item donated (scaled to qty)
-LEVEL_GATHER_BONUS  = 0.02  # +2% per level to all guild resources
