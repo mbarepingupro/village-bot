@@ -46,34 +46,26 @@ def get_player(data: dict, user) -> dict:
     uid = str(user.id)
     if uid not in data["players"]:
         data["players"][uid] = {
-            "name":          user.display_name,
-            "guild":         None,
-            "class":         None,
-            "xp":            0,
-            "level":         1,
-            "gold":          0.0,
-            "inventory":     {},
-            "cosmetics":     {},
-            "equipped_tool": None,
-            "cooldowns":     {},
-            "active_effects":{},
+            "name":      user.display_name,
+            "guild":     None,
+            "class":     None,
+            "xp":        0,
+            "level":     1,
+            "inventory": {},
+            "cosmetics": {},
+            "cooldowns": {},
             "stats": {
                 "total_gathers": 0,
-                "total_loots":   0,
-                "gold_earned":   0.0,
+                "total_streams": 0,
             }
         }
     p = data["players"][uid]
-    p.setdefault("gold", 0.0)
-    p.setdefault("equipped_tool", None)
-    p.setdefault("active_effects", {})
-    p.setdefault("stats", {}).setdefault("gold_earned", 0.0)
+    # Ensure fields exist for migrated players
+    p.setdefault("cosmetics", {})
+    p.setdefault("stats", {}).setdefault("total_streams", 0)
+    p.setdefault("stats", {}).setdefault("total_gathers", 0)
     p["name"] = user.display_name
     return p
-
-def fmt_gold(amount: float) -> str:
-    """Format gold for display — always 1 decimal place."""
-    return f"{round(amount, 1):.1f}"
 
 def add_item(player: dict, item_id: str, qty: int = 1):
     inv = player["inventory"]
@@ -86,22 +78,6 @@ def remove_item(player: dict, item_id: str, qty: int = 1) -> bool:
     inv[item_id] -= qty
     if inv[item_id] == 0:
         del inv[item_id]
-    return True
-
-def add_gold(player: dict, amount: float):
-    if amount <= 0:
-        return
-    player["gold"] = round(player.get("gold", 0.0) + amount, 1)
-    player.setdefault("stats", {})
-    player["stats"]["gold_earned"] = round(
-        player["stats"].get("gold_earned", 0.0) + amount, 1
-    )
-
-def spend_gold(player: dict, amount: float) -> bool:
-    """Deduct gold. Returns False if insufficient funds."""
-    if amount <= 0 or round(player.get("gold", 0.0), 1) < round(amount, 1):
-        return False
-    player["gold"] = round(player["gold"] - amount, 1)
     return True
 
 def cooldown_remaining(player: dict, action: str, seconds: int) -> int:
@@ -126,23 +102,11 @@ def fmt_time(seconds: int) -> str:
         return f"{seconds}s"
     return f"{seconds // 60}m {seconds % 60}s"
 
-def sanitize_qty(qty, max_qty: int) -> int | None:
-    """Validate and clamp a quantity input. Returns None if invalid."""
-    try:
-        qty = int(qty)
-    except (TypeError, ValueError):
-        return None
-    if qty <= 0:
-        return None
-    return min(qty, max_qty)
-
 def is_super(ctx) -> bool:
-    """Returns True if the user has a SUPER_ROLES role (bypasses cooldowns)."""
+    """Returns True if the user has a SUPER_ROLES role."""
     from config import SUPER_ROLES
-    # In a server — check roles
     if isinstance(ctx.author, discord.Member):
         return any(r.name in SUPER_ROLES for r in ctx.author.roles)
-    # In a DM — check if the bot can find the member in any mutual guild
     for guild in ctx.bot.guilds:
         member = guild.get_member(ctx.author.id)
         if member and any(r.name in SUPER_ROLES for r in member.roles):

@@ -6,10 +6,9 @@ Commands:
   !endloot    (mod only) — force-closes the window early
   !loot       (everyone) — claim during the window
 
-Protection:
-  - One claim per user per event (checked inside data_lock)
-  - user_lock prevents same user spamming before first claim saves
-  - Window expiry checked inside lock
+Rewards: 1-5 loot tokens + small guild resource bonus.
+Window: 30 minutes (auto-triggered by Streamcord or manual !startloot).
+One claim per user per session.
 """
 
 import time
@@ -17,74 +16,14 @@ import random
 import discord
 from discord.ext import commands
 from config import (
-    LEVEL_GATHER_BONUS, GUILDS, ITEMS, MOD_ROLE_NAMES,
-    COOLDOWNS, LOOT_WINDOW_SECONDS,
-    XP_PER_LOOT, XP_PER_LEVEL, GOLD_LOOT_REWARD
+    GUILDS, ITEMS, LOOT_WINDOW_SECONDS,
+    LOOT_TOKEN_RANGE, LOOT_RESOURCE_BONUS,
+    XP_PER_LOOT, XP_PER_LEVEL,
 )
 from cogs.data import (
     load_data, save_data, get_player,
-    add_item, add_gold, cooldown_remaining, set_cooldown,
-    add_xp, fmt_time, fmt_gold, data_lock, user_lock, is_mod
+    add_item, add_xp, fmt_time, data_lock, user_lock, is_mod
 )
-
-# ── Loot tables ───────────────────────────────────────────────────────────────
-BASE_LOOT_TABLE = [
-    ("egg",      2, 5,  15),
-    ("wood",     2, 6,  15),
-    ("fish",     2, 5,  15),
-    ("bone",     1, 4,  12),
-    ("herb",     1, 4,  12),
-    ("candy",    2, 6,  15),
-    ("confetti", 2, 8,  15),
-    ("meat",     1, 4,  10),
-    ("fur",      1, 4,  10),
-    ("alcohol",  1, 3,  10),
-    ("candle",   1, 4,  10),
-    ("metal",    1, 3,   8),
-    ("blood_bean", 1, 2, 6),
-    ("soul_shard", 1, 2, 4),
-]
-
-RARE_LOOT_TABLE = [
-    ("stream_command_slot", 1, 1, 3),
-    ("trick_coin",          1, 1, 8),
-    ("bone_brew",           1, 1, 10),
-    ("scrambled_armor",     1, 1, 8),
-]
-
-
-def weighted_pick(table):
-    items   = [(i, mn, mx) for i, mn, mx, _ in table]
-    weights = [w for _, _, _, w in table]
-    return random.choices(items, weights=weights, k=1)[0]
-
-
-def roll_loot(player: dict) -> list:
-    results = {}
-
-    # 2–3 base resources from the general pool
-    for _ in range(random.randint(2, 3)):
-        item_id, mn, mx = weighted_pick(BASE_LOOT_TABLE)
-        qty = random.randint(mn, mx)
-        results[item_id] = results.get(item_id, 0) + qty
-
-    # Level bonus
-    if player["level"] >= 5:
-        item_id, mn, mx = weighted_pick(BASE_LOOT_TABLE)
-        results[item_id] = results.get(item_id, 0) + random.randint(mn, mx)
-
-    # 15% rare roll
-    if random.random() < 0.15:
-        item_id, mn, mx = weighted_pick(RARE_LOOT_TABLE)
-        results[item_id] = results.get(item_id, 0) + random.randint(mn, mx)
-
-    # 25% guild exclusive
-    if player.get("guild") and player["guild"] in GUILDS:
-        if random.random() < 0.25:
-            exclusive = GUILDS[player["guild"]]["loot_item"]
-            results[exclusive] = results.get(exclusive, 0) + 1
-
-    return list(results.items())
 
 
 class LootCog(commands.Cog):
@@ -112,9 +51,9 @@ class LootCog(commands.Cog):
 
         mins = LOOT_WINDOW_SECONDS // 60
         await ctx.send(
-            f"🎁 **LOOT DROP!** The stream is live!\n"
-            f"Type `!loot` in the next **{mins} minutes** to claim your rewards!\n"
-            f"Higher level = better drops. Guild members get exclusive items!"
+            f"🔴 **STREAM IS LIVE!**\n"
+            f"🎟️ Type `!loot` in the next **{mins} minutes** to claim your **Loot Tokens**!\n"
+            f"Tokens are required to craft cosmetics. Don't miss out!"
         )
 
     # ── !endloot ──────────────────────────────────────────────────────────────
@@ -135,14 +74,13 @@ class LootCog(commands.Cog):
             data["loot_end_time"] = 0
             save_data(data)
 
-        await ctx.send(f"🔒 Loot window closed. **{count}** players claimed drops.")
+        await ctx.send(f"🔒 Loot window closed. **{count}** players claimed tokens.")
 
     # ── !loot ─────────────────────────────────────────────────────────────────
     @commands.command(name="loot")
     async def loot(self, ctx):
-        """Claim your loot during a live stream loot drop."""
+        """Claim your loot tokens during a live stream."""
         try:
-            # Per-user lock — blocks the same user claiming twice simultaneously
             if user_lock(ctx.author.id, "loot").locked():
                 return
 
@@ -151,64 +89,73 @@ class LootCog(commands.Cog):
                     data   = load_data()
                     player = get_player(data, ctx.author)
 
-                    # Window active check
+                    # Window checks
                     if not data.get("loot_active"):
                         await ctx.send(
                             "🔒 No loot drop is active right now. "
-                            "Watch for `!startloot` when the stream goes live!"
+                            "Watch for the next stream!"
                         )
                         return
 
-                    # Window expired check
                     if time.time() > data.get("loot_end_time", 0):
                         data["loot_active"] = False
                         save_data(data)
                         await ctx.send("⌛ The loot window just closed!")
                         return
 
-                    # One claim per user per event — checked INSIDE the lock
+                    # One claim per session
                     uid = str(ctx.author.id)
                     if uid in data.get("loot_claimers", []):
                         remaining = int(data["loot_end_time"] - time.time())
                         await ctx.send(
-                            f"✋ {ctx.author.mention} You already claimed your loot this session! "
+                            f"✋ {ctx.author.mention} You already claimed this session! "
                             f"Window closes in {fmt_time(remaining)}."
                         )
                         return
 
-                    # Must be in a guild
+                    # Must have a guild (for resource bonus)
                     if player["guild"] is None:
                         await ctx.send(
                             f"⚠️ {ctx.author.mention} Join a guild first with `!join` to claim loot!"
                         )
                         return
 
-                    # Roll and give loot — all inside lock
-                    drops = roll_loot(player)
-                    for item_id, qty in drops:
-                        add_item(player, item_id, qty)
+                    # ── Roll tokens ───────────────────────────────────────────
+                    tokens = random.randint(*LOOT_TOKEN_RANGE)
+                    add_item(player, "loot_token", tokens)
 
-                    gold_gained = round(random.uniform(*GOLD_LOOT_REWARD), 1)
-                    add_gold(player, gold_gained)
+                    # ── Bonus guild resources ─────────────────────────────────
+                    guild_cfg = GUILDS.get(player["guild"], {})
+                    resources = guild_cfg.get("resources", [])
+                    bonus_resources = {}
+                    for res_id in resources:
+                        qty = random.randint(*LOOT_RESOURCE_BONUS)
+                        add_item(player, res_id, qty)
+                        bonus_resources[res_id] = qty
 
-                    # Mark as claimed BEFORE saving
+                    # ── Mark claimed + XP ─────────────────────────────────────
                     data.setdefault("loot_claimers", []).append(uid)
-                    player["stats"]["total_loots"] += 1
+                    player["stats"]["total_streams"] = player["stats"].get("total_streams", 0) + 1
                     levelled = add_xp(player, XP_PER_LOOT, XP_PER_LEVEL)
                     save_data(data)
 
-                # Build response outside lock
-                guild_cfg  = GUILDS.get(player["guild"], {})
-                drop_lines = []
-                for item_id, qty in drops:
-                    item = ITEMS.get(item_id, {"name": item_id, "emoji": "❓"})
-                    drop_lines.append(f"{item['emoji']} **{item['name']}** x{qty}")
+                # ── Build response ────────────────────────────────────────────
+                total_tokens = player["inventory"].get("loot_token", 0)
+
+                token_msg = f"🎟️ **+{tokens} Loot Token{'s' if tokens != 1 else ''}!**"
+                if tokens == LOOT_TOKEN_RANGE[1]:
+                    token_msg += " 🎉 **MAX ROLL!**"
+                token_msg += f" (total: {total_tokens})"
+
+                bonus_str = "  ".join(
+                    f"{ITEMS[k]['emoji']} +{v} {ITEMS[k]['name']}"
+                    for k, v in bonus_resources.items()
+                )
 
                 msg = (
-                    f"🎁 {guild_cfg.get('emoji','')} **{ctx.author.display_name}** "
-                    f"({player['class']}) claimed their loot:\n"
-                    + "\n".join(drop_lines)
-                    + f"\n💰 +**{gold_gained}g** (total: {fmt_gold(player['gold'])}g)"
+                    f"🎁 **{ctx.author.display_name}** claimed their loot!\n"
+                    f"{token_msg}\n"
+                    f"{bonus_str}"
                 )
                 if levelled:
                     msg += f"\n⬆️ **LEVEL UP! Now level {player['level']}!**"
